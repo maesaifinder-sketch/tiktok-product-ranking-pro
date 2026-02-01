@@ -83,14 +83,15 @@ footer{
     <h3>⬇️ Import จาก TikTok Seller (Console)</h3>
     <textarea id="importData" placeholder="วาง JSON จาก Console ที่นี่"></textarea>
     <br><br>
-    <button onclick="importData()">Import</button>
+    <button onclick="importData()">Import (Safe Merge)</button>
     <button onclick="exportCSV()">Export CSV</button>
+    <button onclick="clearAll()">Clear Data</button>
   </div>
 
   <!-- SEARCH -->
   <div class="card">
-    <h3>🔍 ค้นหาสินค้า / Hashtag</h3>
-    <input id="searchInput" placeholder="เช่น Topper / #topper" oninput="renderRanking()">
+    <h3>🔍 ค้นหาสินค้า / Hashtag / หมวด</h3>
+    <input id="searchInput" placeholder="เช่น Topper / #topper / ชุดเครื่องนอน" oninput="renderRanking()">
   </div>
 
   <h2>🔥 Top Product Ranking</h2>
@@ -106,22 +107,45 @@ footer{
 </div>
 
 <footer>
-  ⚠️ ใช้ข้อมูลจาก TikTok Seller Compass • ไม่ใช้ API
+  ⚠️ ใช้ข้อมูลจาก TikTok Seller Compass • ไม่ใช้ API • เก็บข้อมูลในเครื่องผู้ใช้
 </footer>
 
 <script>
 /* ================= LOAD ================= */
 let products = JSON.parse(localStorage.getItem("tiktok_products")) || [];
 
-/* ================= IMPORT ================= */
+/* ================= SAFE IMPORT ================= */
 function importData(){
   try{
     const raw = document.getElementById("importData").value;
-    const data = JSON.parse(raw);
-    if(!Array.isArray(data)) throw "invalid";
-    products = data;
+    const newData = JSON.parse(raw);
+    if(!Array.isArray(newData)) throw "invalid";
+
+    let existing =
+      JSON.parse(localStorage.getItem("tiktok_products")) || [];
+
+    const map = {};
+
+    // ของเดิม
+    existing.forEach(p => {
+      const key = p.product_url || (p.name + "|" + p.category + "|" + p.shop);
+      map[key] = p;
+    });
+
+    // ของใหม่
+    newData.forEach(p => {
+      const key = p.product_url || (p.name + "|" + p.category + "|" + p.shop);
+      map[key] = {
+        ...map[key],
+        ...p,
+        importedAt: new Date().toISOString()
+      };
+    });
+
+    products = Object.values(map);
     localStorage.setItem("tiktok_products", JSON.stringify(products));
-    alert("✅ Import สำเร็จ: " + products.length + " สินค้า");
+
+    alert("✅ Import สำเร็จ (รวมทั้งหมด " + products.length + " สินค้า)");
     renderRanking();
   }catch(e){
     alert("❌ JSON ไม่ถูกต้อง");
@@ -147,7 +171,8 @@ function renderRanking(){
   const ranked = products
     .filter(p =>
       (p.name||"").toLowerCase().includes(keyword) ||
-      (p.hashtag||"").toLowerCase().includes(keyword)
+      (p.hashtag||"").toLowerCase().includes(keyword) ||
+      (p.category||"").toLowerCase().includes(keyword)
     )
     .map(p => ({...p, score:calculateScore(p)}))
     .sort((a,b)=>b.score-a.score);
@@ -167,9 +192,9 @@ function renderRanking(){
       <div class="card">
         <div class="rank">#${i+1}</div>
         <h3>${p.name}</h3>
+        <p>หมวด: ${p.category||"-"}</p>
         <p>ร้าน: ${p.shop||"-"}</p>
         <p>ราคา: ${p.price||"-"}</p>
-        <p>CTR: ${p.ctr||"-"}</p>
         <div class="score">${p.score}/100</div>
         <span class="badge">${status}</span>
         <br><br>
@@ -230,6 +255,15 @@ function exportCSV(){
   a.download = "tiktok_products.csv";
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/* ================= CLEAR ================= */
+function clearAll(){
+  if(confirm("ล้างข้อมูลทั้งหมด?")){
+    localStorage.removeItem("tiktok_products");
+    products = [];
+    renderRanking();
+  }
 }
 
 renderRanking();
