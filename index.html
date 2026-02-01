@@ -82,10 +82,13 @@ small{color:#64748b}
 </div>
 
 <script>
-const DB="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app/.json";
+/* ================= FIREBASE ================= */
+const DB_ROOT = "https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
+const IMPORT_PATH = "/imports.json";
+
 let DATA=[];
 
-/* ===== CATEGORY ===== */
+/* ================= CATEGORY ================= */
 function autoCategory(name="",price=0){
   name=name.toLowerCase();
   if(/topper|ท็อปเปอร์/.test(name)) return "Topper";
@@ -96,17 +99,17 @@ function autoCategory(name="",price=0){
   return "Home & Sleep";
 }
 
-/* ===== SCORE ===== */
+/* ================= SCORE ================= */
 const sellScore=p=>Math.round(
-  Math.min(p.avgViews/1200,30)+
-  Math.min(p.engagement*4,30)+
+  Math.min((p.avgViews||0)/1200,30)+
+  Math.min((p.engagement||0)*4,30)+
   Math.min((p.creatorRepeat||0.3)*100,20)+
   Math.min(p.hashtagGrowth||15,20)
 );
 
 const feedScore=p=>Math.round(
-  Math.min(p.avgViews/1000,30)+
-  Math.min(p.engagement*5,25)+
+  Math.min((p.avgViews||0)/1000,30)+
+  Math.min((p.engagement||0)*5,25)+
   Math.min(p.hashtagGrowth||15,15)+
   Math.max(0,15-(p.videos||20))+
   Math.min((p.creatorRepeat||0.3)*100,15)
@@ -124,32 +127,49 @@ const roiScore=p=>{
   );
 };
 
-/* ===== LOAD ===== */
+/* ================= LOAD (FIXED) ================= */
 async function load(){
-  const r=await fetch(DB);
-  const j=await r.json();
-  DATA=[];
-  Object.values(j||{}).forEach(p=>{
-  if(!p.name) return;
+  const r = await fetch(DB_ROOT + IMPORT_PATH);
+  const json = await r.json();
 
-  p.category = autoCategory(p.name, p.price);
-  p.sell = sellScore(p);
-  p.feed = feedScore(p);
-  p.foi = FOI(p);
-  p.roi = roiScore(p);
+  DATA = [];
 
-  DATA.push(p);
-});
-  dashboard(); filterCat(); render(DATA); buildGPT();
+  if(!json){
+    console.warn("❌ ไม่พบข้อมูล imports");
+    render([]);
+    return;
+  }
+
+  // รวม items ทุก import (หลายครั้ง / หลายคน)
+  Object.values(json).forEach(batch=>{
+    (batch.items || []).forEach(p=>{
+      if(!p.name) return;
+
+      p.category = autoCategory(p.name, p.price);
+      p.sell = sellScore(p);
+      p.feed = feedScore(p);
+      p.foi = FOI(p);
+      p.roi = roiScore(p);
+
+      DATA.push(p);
+    });
+  });
+
+  dashboard();
+  filterCat();
+  render(DATA);
+  buildGPT();
 }
 
-/* ===== UI ===== */
+/* ================= UI ================= */
 function dashboard(){
   total.innerText=DATA.length;
   easy.innerText=DATA.filter(p=>p.foi>=75).length;
   roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
-  const c={}; DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
-  topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0][0];
+
+  const c={};
+  DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
+  topCat.innerText = Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0] || "-";
 }
 
 function filterCat(){
@@ -185,7 +205,7 @@ function render(list){
   });
 }
 
-/* ===== GPT ===== */
+/* ================= GPT ================= */
 function buildGPT(){
   const top=DATA.slice(0,10);
   let t=`คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\nวิเคราะห์สินค้าต่อไปนี้และแนะนำแนวทำคลิป + Script pro\n\n`;
@@ -204,7 +224,7 @@ function sendToGPT(){
   window.open("https://chat.openai.com","_blank");
 }
 
-/* ===== EXPORT ===== */
+/* ================= EXPORT ================= */
 function exportCSV(){
   let csv="name,category,foi,roi,sell,feed\n";
   DATA.forEach(p=>{
