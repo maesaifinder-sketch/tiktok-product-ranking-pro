@@ -129,16 +129,17 @@ async function load(){
   const r=await fetch(DB);
   const j=await r.json();
   DATA=[];
-  Object.values(j||{}).forEach(b=>{
-    (b.items||[]).forEach(p=>{
-      p.category=autoCategory(p.name,p.price);
-      p.sell=sellScore(p);
-      p.feed=feedScore(p);
-      p.foi=FOI(p);
-      p.roi=roiScore(p);
-      DATA.push(p);
-    });
-  });
+  Object.values(j||{}).forEach(p=>{
+  if(!p.name) return;
+
+  p.category = autoCategory(p.name, p.price);
+  p.sell = sellScore(p);
+  p.feed = feedScore(p);
+  p.foi = FOI(p);
+  p.roi = roiScore(p);
+
+  DATA.push(p);
+});
   dashboard(); filterCat(); render(DATA); buildGPT();
 }
 
