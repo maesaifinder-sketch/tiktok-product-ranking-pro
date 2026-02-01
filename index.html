@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TikTok Product Ranking PRO</title>
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui,sans-serif;
+  background:#f4f4f4;
+}
+header{
+  background:#000;
+  color:#fff;
+  padding:22px;
+  text-align:center;
+}
+.container{
+  max-width:1300px;
+  margin:auto;
+  padding:20px;
+}
+.card{
+  background:#fff;
+  border-radius:14px;
+  padding:16px;
+  box-shadow:0 4px 10px rgba(0,0,0,.08);
+  margin-bottom:20px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:16px;
+}
+.rank{font-size:26px;font-weight:800;}
+.score{font-size:34px;font-weight:900;}
+.badge{
+  display:inline-block;
+  padding:5px 12px;
+  border-radius:8px;
+  background:#eee;
+  font-size:12px;
+}
+textarea,input{
+  width:100%;
+  border-radius:10px;
+  padding:12px;
+  border:1px solid #ccc;
+  font-family:monospace;
+}
+textarea{min-height:160px;}
+button{
+  padding:10px 16px;
+  border-radius:10px;
+  border:none;
+  background:#000;
+  color:#fff;
+  cursor:pointer;
+  margin-right:8px;
+}
+footer{
+  text-align:center;
+  padding:20px;
+  font-size:13px;
+  color:#777;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>TikTok Product Ranking PRO</h1>
+  <p>Ranking • Affiliate • Script pro</p>
+</header>
+
+<div class="container">
+
+  <!-- IMPORT -->
+  <div class="card">
+    <h3>⬇️ Import จาก TikTok Seller (Console)</h3>
+    <textarea id="importData" placeholder="วาง JSON จาก Console ที่นี่"></textarea>
+    <br><br>
+    <button onclick="importData()">Import</button>
+    <button onclick="exportCSV()">Export CSV</button>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="card">
+    <h3>🔍 ค้นหาสินค้า / Hashtag</h3>
+    <input id="searchInput" placeholder="เช่น Topper / #topper" oninput="renderRanking()">
+  </div>
+
+  <h2>🔥 Top Product Ranking</h2>
+  <div class="grid" id="ranking"></div>
+
+  <h2>📊 Script pro – วิเคราะห์สินค้า (Send to GPT)</h2>
+  <div class="card">
+    <textarea id="prompt" placeholder="เลือกสินค้าจาก Ranking"></textarea>
+    <br><br>
+    <button onclick="copyPrompt()">📋 Copy Prompt</button>
+  </div>
+
+</div>
+
+<footer>
+  ⚠️ ใช้ข้อมูลจาก TikTok Seller Compass • ไม่ใช้ API
+</footer>
+
+<script>
+/* ================= LOAD ================= */
+let products = JSON.parse(localStorage.getItem("tiktok_products")) || [];
+
+/* ================= IMPORT ================= */
+function importData(){
+  try{
+    const raw = document.getElementById("importData").value;
+    const data = JSON.parse(raw);
+    if(!Array.isArray(data)) throw "invalid";
+    products = data;
+    localStorage.setItem("tiktok_products", JSON.stringify(products));
+    alert("✅ Import สำเร็จ: " + products.length + " สินค้า");
+    renderRanking();
+  }catch(e){
+    alert("❌ JSON ไม่ถูกต้อง");
+  }
+}
+
+/* ================= SCORE ================= */
+function calculateScore(p){
+  let score = 0;
+  score += Math.min((p.avgViews||0) / 1000, 30);
+  score += Math.min((p.engagement||0) * 4, 30);
+  score += (p.creatorRepeat||0) * 100 * 0.2;
+  score += Math.min((p.hashtagGrowth||0), 20);
+  return Math.round(score);
+}
+
+/* ================= RENDER ================= */
+function renderRanking(){
+  const box = document.getElementById("ranking");
+  const keyword = document.getElementById("searchInput").value.toLowerCase();
+  box.innerHTML = "";
+
+  const ranked = products
+    .filter(p =>
+      (p.name||"").toLowerCase().includes(keyword) ||
+      (p.hashtag||"").toLowerCase().includes(keyword)
+    )
+    .map(p => ({...p, score:calculateScore(p)}))
+    .sort((a,b)=>b.score-a.score);
+
+  if(!ranked.length){
+    box.innerHTML = "<p>ยังไม่มีข้อมูล</p>";
+    return;
+  }
+
+  ranked.forEach((p,i)=>{
+    const status =
+      p.score >= 75 ? "🚀 น่าลุยมาก" :
+      p.score >= 55 ? "✅ น่าทดลอง" :
+      "⚠️ แข่งขันสูง";
+
+    box.innerHTML += `
+      <div class="card">
+        <div class="rank">#${i+1}</div>
+        <h3>${p.name}</h3>
+        <p>ร้าน: ${p.shop||"-"}</p>
+        <p>ราคา: ${p.price||"-"}</p>
+        <p>CTR: ${p.ctr||"-"}</p>
+        <div class="score">${p.score}/100</div>
+        <span class="badge">${status}</span>
+        <br><br>
+        <button onclick="generatePrompt('${p.name}','${p.hashtag||"#tiktokshop"}',${p.score})">
+          วิเคราะห์สินค้า
+        </button>
+      </div>
+    `;
+  });
+}
+
+/* ================= SCRIPT PRO ================= */
+function generatePrompt(name, hashtag, score){
+  document.getElementById("prompt").value =
+`คุณคือผู้เชี่ยวชาญด้านการวิเคราะห์ข้อมูลการขายของบน TikTok
+
+สินค้า: ${name}
+Hashtag หลัก: ${hashtag}
+คะแนนความน่าขาย: ${score}/100
+
+ช่วยหาข้อมูลสินค้าใน TikTok ประเทศไทย
+ตามสินค้า และ Hashtag หลักนี้
+(จำนวน 20 สินค้า)
+
+โดยสรุปออกมาเป็น:
+- ชื่อสินค้า
+- url ของสินค้า
+- ราคาโดยประมาณ
+- ระดับความนิยม / ยอดขาย (ประเมิน)
+- จุดขายหลัก
+- เหมาะทำ Affiliate หรือไม่
+`;
+}
+
+/* ================= COPY ================= */
+function copyPrompt(){
+  const t = document.getElementById("prompt");
+  t.select();
+  document.execCommand("copy");
+  alert("✅ คัดลอก Prompt แล้ว");
+}
+
+/* ================= EXPORT CSV ================= */
+function exportCSV(){
+  if(!products.length){ alert("ไม่มีข้อมูล"); return; }
+
+  const header = Object.keys(products[0]).join(",");
+  const rows = products.map(p =>
+    Object.values(p).map(v => `"${String(v||"").replace(/"/g,'""')}"`).join(",")
+  );
+  const csv = [header, ...rows].join("\n");
+
+  const blob = new Blob([csv], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "tiktok_products.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+renderRanking();
+</script>
+
+</body>
+</html>
