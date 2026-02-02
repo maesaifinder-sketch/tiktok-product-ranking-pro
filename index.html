@@ -3,168 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Index PRO+ – Feed Opportunity Index</title>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<title>Index PRO+ – TikTok Feed Intelligence</title>
 
 <style>
-:root{
-  --bg:#f1f5f9;
-  --card:#ffffff;
-  --dark:#020617;
-  --muted:#64748b;
-  --line:#e5e7eb;
-  --radius:18px;
+body{margin:0;font-family:system-ui;background:#f1f5f9}
+header{background:#020617;color:#fff;padding:20px}
+.container{max-width:1500px;margin:auto;padding:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card{background:#fff;border-radius:16px;padding:18px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.stat{font-size:30px;font-weight:900}
+.badge{padding:4px 10px;border-radius:20px;font-size:12px;background:#e5e7eb}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px;border-bottom:1px solid #eee;vertical-align:top}
+th{background:#f8fafc}
+.rank{font-weight:900}
+.foi{font-size:22px;font-weight:900;color:#0f172a}
+button,input,select,textarea{
+  padding:10px;border-radius:10px;border:1px solid #cbd5f5
 }
-
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:system-ui,-apple-system;
-  background:var(--bg);
-  color:#0f172a;
-}
-
-/* ===== HEADER ===== */
-header{
-  background:linear-gradient(180deg,#020617,#020617cc);
-  color:#fff;
-  padding:26px 20px;
-}
-header h1{
-  margin:0;
-  font-size:28px;
-}
-header small{
-  color:#cbd5f5;
-}
-
-/* ===== LAYOUT ===== */
-.container{
-  max-width:1500px;
-  margin:auto;
-  padding:20px;
-}
-
-/* ===== DASHBOARD ===== */
-.dashboard{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
-  gap:16px;
-  margin-bottom:20px;
-}
-.stat-card{
-  background:var(--card);
-  border-radius:var(--radius);
-  padding:18px;
-  box-shadow:0 10px 30px rgba(0,0,0,.06);
-}
-.stat-card h3{
-  margin:0 0 8px;
-  font-size:16px;
-}
-.stat{
-  font-size:34px;
-  font-weight:900;
-}
-
-/* ===== FILTER BAR ===== */
-.filter{
-  background:var(--card);
-  border-radius:var(--radius);
-  padding:14px;
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  align-items:center;
-  margin-bottom:20px;
-}
-input,select,button{
-  padding:10px 14px;
-  border-radius:12px;
-  border:1px solid var(--line);
-  font-size:14px;
-}
-button{
-  background:#020617;
-  color:#fff;
-  cursor:pointer;
-}
+button{background:#020617;color:#fff;cursor:pointer}
 button.secondary{background:#475569}
 button.danger{background:#b91c1c}
-
-/* ===== TABLE ===== */
-.card{
-  background:var(--card);
-  border-radius:var(--radius);
-  padding:16px;
-  box-shadow:0 10px 30px rgba(0,0,0,.06);
-  margin-bottom:20px;
-}
-.table-wrap{overflow-x:auto}
-table{
-  width:100%;
-  min-width:900px;
-  border-collapse:collapse;
-}
-th,td{
-  padding:12px;
-  border-bottom:1px solid var(--line);
-  text-align:left;
-}
-th{
-  background:#f8fafc;
-  font-size:14px;
-}
-.product{
-  display:flex;
-  gap:12px;
-  align-items:flex-start;
-}
+textarea{width:100%;min-height:160px}
+small{color:#64748b}
+.product{display:flex;gap:10px;align-items:center}
 .product img{
-  width:56px;
-  height:56px;
-  border-radius:12px;
-  object-fit:cover;
-  background:#e5e7eb;
+  width:52px;height:52px;border-radius:10px;
+  object-fit:cover;background:#eee;flex-shrink:0
 }
-.product b{
-  display:-webkit-box;
-  -webkit-line-clamp:3;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
-  font-size:14px;
-}
-.badge{
-  background:#e5e7eb;
-  padding:4px 10px;
-  border-radius:999px;
-  font-size:12px;
-}
-.foi{
-  font-size:20px;
-  font-weight:900;
-}
-
-/* ===== GPT ===== */
-textarea{
-  width:100%;
-  min-height:180px;
-  border-radius:14px;
-  padding:14px;
-  border:1px solid var(--line);
-  font-size:14px;
-}
-.gpt-btn{
-  margin-top:12px;
-}
-
-/* ===== MOBILE ===== */
-@media(max-width:768px){
-  header h1{font-size:22px}
-  .stat{font-size:28px}
-}
+.shop{font-size:12px;color:#475569}
+.link{font-size:12px;color:#2563eb;text-decoration:none}
 </style>
 </head>
 
@@ -172,48 +40,40 @@ textarea{
 
 <header>
   <h1>🚀 Index PRO+ – Feed Opportunity Index</h1>
-  <small>TikTok Affiliate Intelligence | Single User</small>
+  <small>Kalodata-style | Affiliate Intelligence | No API</small>
 </header>
 
 <div class="container">
 
-<!-- ===== DASHBOARD ===== -->
-<div class="dashboard">
-  <div class="stat-card">
-    <h3>📦 สินค้าทั้งหมด</h3>
-    <div class="stat" id="total">0</div>
-  </div>
-  <div class="stat-card">
-    <h3>🚀 FOI ≥ 75</h3>
-    <div class="stat" id="easy">0</div>
-  </div>
-  <div class="stat-card">
-    <h3>💰 ROI สูง</h3>
-    <div class="stat" id="roiHigh">0</div>
-  </div>
-  <div class="stat-card">
-    <h3>🔥 หมวดมาแรง</h3>
-    <div class="stat" id="topCat">-</div>
-  </div>
+<!-- DASHBOARD -->
+<div class="grid">
+  <div class="card"><h3>📦 สินค้าทั้งหมด</h3><div class="stat" id="total">0</div></div>
+  <div class="card"><h3>🚀 FOI ≥ 75</h3><div class="stat" id="easy">0</div></div>
+  <div class="card"><h3>💰 ROI สูง</h3><div class="stat" id="roiHigh">0</div></div>
+  <div class="card"><h3>🔥 หมวดมาแรง</h3><div class="stat" id="topCat">-</div></div>
 </div>
 
-<!-- ===== FILTER ===== -->
-<div class="filter">
+<br>
+
+<!-- FILTER -->
+<div class="card">
   <input id="search" placeholder="ค้นหาสินค้า">
-  <select id="catFilter"><option value="">ทุกหมวด</option></select>
+  <select id="catFilter"></select>
   <button onclick="apply()">Filter</button>
   <button class="secondary" onclick="exportCSV()">Export CSV</button>
-  <button class="danger" onclick="clearFirebase()">🗑 Clear Data</button>
+  <button class="danger" onclick="clearFirebase()">🗑 Clear Firebase Data</button>
 </div>
 
-<!-- ===== TABLE ===== -->
-<div class="card table-wrap">
+<br>
+
+<!-- TABLE -->
+<div class="card">
 <table>
 <thead>
 <tr>
 <th>#</th>
 <th>สินค้า</th>
-<th>ร้าน</th>
+<th>ร้านค้า</th>
 <th>หมวด</th>
 <th>FOI</th>
 <th>ROI</th>
@@ -226,65 +86,103 @@ textarea{
 </table>
 </div>
 
-<!-- ===== GPT ===== -->
+<br>
+
+<!-- GPT -->
 <div class="card">
-  <h3>🧠 Send to GPT (No API)</h3>
+  <h3>🧠 Send to GPT (ไม่ใช้ API)</h3>
   <textarea id="gptPrompt"></textarea>
-  <button class="gpt-btn" onclick="sendToGPT()">📋 Copy & Open ChatGPT</button>
+  <button onclick="sendToGPT()">📤 Copy & Open ChatGPT</button>
 </div>
 
 </div>
 
 <script>
-firebase.initializeApp({
-  apiKey:"AIzaSyXXXX",
-  databaseURL:"https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:"index-pro-tiktok"
-});
-const DB=firebase.database().ref("imports");
-
-const imgFallback="https://via.placeholder.com/80?text=No+Image";
+/* ================= FIREBASE ================= */
+const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
+const IMPORT_PATH="/imports.json";
 let DATA=[];
 
-const autoCategory=(n="",p=0)=>{
-  n=n.toLowerCase();
-  if(n.includes("topper")) return "Topper";
-  if(n.includes("ผ้าปู")) return "ผ้าปูที่นอน";
-  if(n.includes("หมอน")) return "หมอน";
-  if(p>1000) return "Premium Bedding";
+/* ================= CATEGORY ================= */
+function autoCategory(name="",price=0){
+  name=name.toLowerCase();
+  if(/topper|ท็อปเปอร์/.test(name)) return "Topper";
+  if(/ผ้าปู|bed sheet/.test(name)) return "ผ้าปูที่นอน";
+  if(/หมอน|pillow/.test(name)) return "หมอน";
+  if(/ผ้าห่ม|blanket/.test(name)) return "ผ้าห่ม";
+  if(price>1000) return "Premium Bedding";
   return "Home & Sleep";
+}
+
+/* ================= SCORE ================= */
+const sellScore=p=>Math.round(
+  Math.min((p.avgViews||0)/1200,30)+
+  Math.min((p.engagement||0)*4,30)+
+  Math.min((p.creatorRepeat||0.3)*100,20)+
+  Math.min(p.hashtagGrowth||15,20)
+);
+const feedScore=p=>Math.round(
+  Math.min((p.avgViews||0)/1000,30)+
+  Math.min((p.engagement||0)*5,25)+
+  Math.min(p.hashtagGrowth||15,15)+
+  Math.max(0,15-(p.videos||20))+
+  Math.min((p.creatorRepeat||0.3)*100,15)
+);
+const FOI=p=>Math.round(sellScore(p)*0.4+feedScore(p)*0.6);
+const roiScore=p=>{
+  const pricePenalty=(p.price||500)/100;
+  return Math.round(
+    p.foi*0.5+
+    (p.engagement||0.1)*20+
+    (p.creatorRepeat||0.3)*30-
+    pricePenalty
+  );
 };
 
-const sellScore=p=>Math.round(Math.min(p.avgViews/1200,30)+Math.min(p.engagement*4,30));
-const feedScore=p=>Math.round(Math.min(p.avgViews/1000,30)+Math.min(p.engagement*5,25));
-const FOI=p=>Math.round(sellScore(p)*0.4+feedScore(p)*0.6);
-const roiScore=p=>Math.round(p.foi*0.6+(p.engagement||0)*20);
+/* ================= LOAD + DEDUPE ================= */
+async function load(){
+  let json={};
+  try{
+    const r=await fetch(DB_ROOT+IMPORT_PATH);
+    json=await r.json()||{};
+  }catch(e){}
 
-DB.once("value",snap=>{
-  const list=[];
-  snap.forEach(b=>{
-    b.val()?.items?.forEach(p=>{
-      const item={
-        ...p,
-        image:(p.image||"").startsWith("http")?p.image:imgFallback,
-        shop:p.shop||"-",
-        category:autoCategory(p.name,p.price)
-      };
-      item.sell=sellScore(item);
-      item.feed=feedScore(item);
-      item.foi=FOI(item);
-      item.roi=roiScore(item);
-      list.push(item);
+  const map={};
+
+  Object.values(json).forEach(batch=>{
+    if(!batch || !Array.isArray(batch.items)) return;
+
+    batch.items.forEach(p=>{
+      if(!p || !p.name) return;
+
+      p.image=p.image||"https://via.placeholder.com/80";
+      p.url=p.url||"#";
+      p.shop=p.shop||"-";
+
+      p.category=autoCategory(p.name,p.price);
+      p.sell=sellScore(p);
+      p.feed=feedScore(p);
+      p.foi=FOI(p);
+      p.roi=roiScore(p);
+
+      const key=(p.name+p.shop).toLowerCase();
+
+      if(!map[key] || map[key].foi < p.foi){
+        map[key]=p;
+      }
     });
   });
-  DATA=list;
-  buildDashboard();
-  buildCat();
+
+  DATA=Object.values(map);
+
+  dashboard();
+  filterCat();
   render(DATA);
   buildGPT();
-});
+}
 
-function buildDashboard(){
+/* ================= UI ================= */
+function dashboard(){
   total.innerText=DATA.length;
   easy.innerText=DATA.filter(p=>p.foi>=75).length;
   roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
@@ -292,61 +190,87 @@ function buildDashboard(){
   DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
   topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
 }
-function buildCat(){
+
+function filterCat(){
   catFilter.innerHTML='<option value="">ทุกหมวด</option>';
   [...new Set(DATA.map(p=>p.category))].forEach(c=>{
     catFilter.innerHTML+=`<option>${c}</option>`;
   });
 }
+
 function apply(){
+  const q=search.value.toLowerCase();
+  const c=catFilter.value;
   render(DATA.filter(p=>
-    (!search.value||p.name.includes(search.value)) &&
-    (!catFilter.value||p.category===catFilter.value)
+    (!q||p.name.toLowerCase().includes(q)) &&
+    (!c||p.category===c)
   ));
 }
+
 function render(list){
   tb.innerHTML="";
   list.sort((a,b)=>b.foi-a.foi).forEach((p,i)=>{
     tb.innerHTML+=`
 <tr>
-<td>${i+1}</td>
+<td class="rank">#${i+1}</td>
 <td>
   <div class="product">
-    <img src="${p.image}" onerror="this.src='${imgFallback}'">
-    <b>${p.name}</b>
+    <img src="${p.image}">
+    <div>
+      <b>${p.name}</b><br>
+      <a class="link" href="${p.url}" target="_blank">เปิดสินค้า</a>
+    </div>
   </div>
 </td>
-<td>${p.shop}</td>
+<td class="shop">${p.shop}</td>
 <td><span class="badge">${p.category}</span></td>
 <td class="foi">${p.foi}</td>
 <td>${p.roi}</td>
 <td>${p.sell}</td>
 <td>${p.feed}</td>
-<td>${p.roi>=70?"💰":"⚠️"}</td>
+<td>${p.roi>=70?"💰 น่าทำเงิน":"⚠️ กำไรบาง"}</td>
 </tr>`;
   });
 }
+
+/* ================= GPT ================= */
 function buildGPT(){
-  gptPrompt.value=
-    "คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\n"+
-    DATA.slice(0,10).map((p,i)=>`${i+1}. ${p.name} (FOI ${p.foi})`).join("\n");
+  let t=`คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\n`;
+  DATA.slice(0,10).forEach((p,i)=>{
+    t+=`${i+1}. ${p.name}
+- ร้าน: ${p.shop}
+- FOI: ${p.foi}
+- ROI: ${p.roi}\n\n`;
+  });
+  gptPrompt.value=t;
 }
+
 function sendToGPT(){
   navigator.clipboard.writeText(gptPrompt.value);
   window.open("https://chat.openai.com","_blank");
 }
+
+/* ================= EXPORT ================= */
 function exportCSV(){
-  let csv="name,foi,roi\n";
-  DATA.forEach(p=>csv+=`${p.name},${p.foi},${p.roi}\n`);
+  let csv="name,shop,category,foi,roi,url\n";
+  DATA.forEach(p=>{
+    csv+=`${p.name},${p.shop},${p.category},${p.foi},${p.roi},${p.url}\n`;
+  });
   const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([csv]));
-  a.download="index_pro.csv";
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download="index_pro_affiliate.csv";
   a.click();
 }
+
+/* ================= CLEAR FIREBASE ================= */
 function clearFirebase(){
-  if(confirm("ล้างข้อมูลทั้งหมด?"))
-    DB.remove().then(()=>location.reload());
+  if(!confirm("⚠️ ล้างข้อมูลทั้งหมดใน Firebase ใช่หรือไม่?")) return;
+  fetch(DB_ROOT+IMPORT_PATH,{method:"DELETE"})
+    .then(()=>alert("✅ ล้างข้อมูล Firebase เรียบร้อย"))
+    .then(()=>location.reload());
 }
+
+load();
 </script>
 
 </body>
