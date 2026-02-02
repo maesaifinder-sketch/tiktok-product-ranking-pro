@@ -16,10 +16,13 @@ header{background:#020617;color:#fff;padding:20px}
 table{width:100%;border-collapse:collapse}
 th,td{padding:12px;border-bottom:1px solid #eee}
 th{background:#f8fafc}
-.rank{font-weight:900}
 .foi{font-size:22px;font-weight:900}
+
 button,input,select,textarea{
-  padding:10px;border-radius:10px;border:1px solid #cbd5f5
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #cbd5f5;
+  font-family:inherit;
 }
 button{background:#020617;color:#fff;cursor:pointer}
 button.secondary{background:#475569}
@@ -27,6 +30,31 @@ button.danger{background:#dc2626}
 textarea{width:100%;min-height:160px}
 small{color:#64748b}
 hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
+
+/* ================= CATEGORY SCROLL (UPDATED) ================= */
+.cat-scroll{
+  max-height:260px;              /* แสดง ~5-6 รายการ */
+  overflow-y:auto;
+  padding-right:6px;
+  -webkit-overflow-scrolling:touch; /* mobile smooth */
+  border-top:1px dashed #e5e7eb;
+}
+
+/* scrollbar style (desktop) */
+.cat-scroll::-webkit-scrollbar{
+  width:6px;
+}
+.cat-scroll::-webkit-scrollbar-thumb{
+  background:#c7d2fe;
+  border-radius:10px;
+}
+
+.cat-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:8px;
+}
 </style>
 </head>
 
@@ -60,7 +88,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
 <br>
 
-<!-- CATEGORY MANAGER -->
+<!-- CATEGORY -->
 <div class="card">
   <h3>🗂 จัดการหมวดหมู่</h3>
 
@@ -69,7 +97,9 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <button onclick="addCategory()">➕ เพิ่มหมวด</button>
 
   <hr>
-  <div id="catList"></div>
+
+  <!-- ✅ SCROLLABLE LIST -->
+  <div id="catList" class="cat-scroll"></div>
 </div>
 
 <br>
@@ -99,13 +129,12 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 </div>
 
 <script>
-/* ================= FIREBASE ================= */
+/* ================= CONFIG ================= */
 const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
 
-/* ================= CATEGORY STORE ================= */
+/* ================= CATEGORY ================= */
 const CAT_KEY="INDEX_PRO_CATEGORIES";
-
 const DEFAULT_CATS=[
   {name:"Topper",regex:"topper|ท็อปเปอร์"},
   {name:"ผ้าปูที่นอน",regex:"ผ้าปู|bed sheet"},
@@ -117,38 +146,35 @@ const DEFAULT_CATS=[
 let CATEGORIES=JSON.parse(localStorage.getItem(CAT_KEY))||DEFAULT_CATS;
 let DATA=[];
 
-/* ================= CATEGORY ================= */
+/* ================= CATEGORY CRUD ================= */
 function saveCat(){
   localStorage.setItem(CAT_KEY,JSON.stringify(CATEGORIES));
   renderCatManager();
   reloadCategory();
 }
-
 function addCategory(){
-  if(!catName.value||!catRegex.value) return alert("กรอกให้ครบ");
+  if(!catName.value||!catRegex.value) return alert("กรอกข้อมูลให้ครบ");
   CATEGORIES.unshift({name:catName.value,regex:catRegex.value});
   catName.value="";catRegex.value="";
   saveCat();
 }
-
 function removeCategory(i){
   if(!confirm("ลบหมวดนี้?")) return;
   CATEGORIES.splice(i,1);
   saveCat();
 }
-
 function renderCatManager(){
   catList.innerHTML="";
   CATEGORIES.forEach((c,i)=>{
     catList.innerHTML+=`
-    <div>
-      <strong>${c.name}</strong>
-      <small>(${c.regex})</small>
-      <button class="danger" onclick="removeCategory(${i})">ลบ</button>
-    </div>`;
+      <div class="cat-item">
+        <div><strong>${c.name}</strong><br><small>${c.regex}</small></div>
+        <button class="danger" onclick="removeCategory(${i})">ลบ</button>
+      </div>`;
   });
 }
 
+/* ================= CATEGORY AUTO ================= */
 function autoCategory(name="",price=0){
   name=name.toLowerCase();
   for(const c of CATEGORIES){
@@ -170,8 +196,10 @@ async function load(){
   const json=await r.json();
   DATA=[];
   if(!json) return;
+
   Object.values(json).forEach(b=>{
     (b.items||[]).forEach(p=>{
+      p.shop=p.shop||p.shop_name||p.seller_name||"-";
       p.category=autoCategory(p.name,p.price);
       p.sell=sellScore(p);
       p.feed=feedScore(p);
@@ -185,12 +213,8 @@ async function load(){
 
 /* ================= UI ================= */
 function reloadCategory(){
-  dashboard();
-  filterCat();
-  render(DATA);
-  buildGPT();
+  dashboard();filterCat();render(DATA);buildGPT();
 }
-
 function dashboard(){
   total.innerText=DATA.length;
   easy.innerText=DATA.filter(p=>p.foi>=75).length;
@@ -198,24 +222,21 @@ function dashboard(){
   const c={};DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
   topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
 }
-
 function filterCat(){
   catFilter.innerHTML='<option value="">ทุกหมวด</option>';
   [...new Set(DATA.map(p=>p.category))].forEach(c=>catFilter.innerHTML+=`<option>${c}</option>`);
 }
-
 function apply(){
   const q=search.value.toLowerCase(),c=catFilter.value;
   render(DATA.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!c||p.category===c)));
 }
-
 function render(list){
   tb.innerHTML="";
   list.sort((a,b)=>b.foi-a.foi).forEach((p,i)=>{
     tb.innerHTML+=`
 <tr>
 <td>#${i+1}</td>
-<td>${p.name}<br><small>${p.shop||""}</small></td>
+<td>${p.name}<br><small>${p.shop}</small></td>
 <td><span class="badge">${p.category}</span></td>
 <td class="foi">${p.foi}</td>
 <td>${p.roi}</td>
@@ -228,7 +249,9 @@ function render(list){
 
 /* ================= GPT ================= */
 function buildGPT(){
-  gptPrompt.value=DATA.slice(0,10).map((p,i)=>`${i+1}. ${p.name} (${p.category}) FOI:${p.foi}`).join("\n");
+  gptPrompt.value=DATA.slice(0,10)
+    .map((p,i)=>`${i+1}. ${p.name} | ร้าน:${p.shop} | FOI:${p.foi}`)
+    .join("\n");
 }
 function sendToGPT(){
   navigator.clipboard.writeText(gptPrompt.value);
@@ -242,6 +265,7 @@ async function clearData(){
   DATA=[];reloadCategory();
 }
 
+/* ================= INIT ================= */
 renderCatManager();
 load();
 </script>
