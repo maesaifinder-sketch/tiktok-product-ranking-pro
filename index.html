@@ -3,69 +3,57 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Index PRO+ – TikTok Feed Intelligence</title>
+<title>Index PRO+</title>
 
-<!-- Firebase (Database only) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <style>
 body{margin:0;font-family:system-ui;background:#f1f5f9}
-header{background:#020617;color:#fff;padding:20px}
-.container{max-width:1500px;margin:auto;padding:20px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
-.card{background:#fff;border-radius:16px;padding:18px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
-.stat{font-size:30px;font-weight:900}
-.badge{padding:4px 10px;border-radius:20px;font-size:12px;background:#e5e7eb}
-table{width:100%;border-collapse:collapse}
-th,td{padding:12px;border-bottom:1px solid #eee}
-th{background:#f8fafc}
-.foi{font-size:22px;font-weight:900}
-button,input,select,textarea{
-  padding:10px;border-radius:10px;border:1px solid #cbd5f5
+header{background:#020617;color:#fff;padding:16px}
+.container{max-width:1500px;margin:auto;padding:12px}
+
+.card{background:#fff;border-radius:16px;padding:14px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;min-width:900px}
+th,td{padding:10px;border-bottom:1px solid #eee;vertical-align:top}
+th{background:#f8fafc;font-size:14px}
+
+.table-wrap{overflow-x:auto}
+
+.product{display:flex;gap:10px;align-items:flex-start}
+.product img{
+  width:56px;height:56px;
+  border-radius:10px;
+  object-fit:cover;
+  background:#e5e7eb;
+  flex-shrink:0
 }
-button{background:#020617;color:#fff;cursor:pointer}
-button.secondary{background:#475569}
-button.danger{background:#b91c1c}
-textarea{width:100%;min-height:160px}
-.product{display:flex;gap:10px;align-items:center}
-.product img{width:52px;height:52px;border-radius:10px;object-fit:cover}
-small{color:#64748b}
+.product b{
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  font-size:14px
+}
+
+.badge{padding:4px 10px;border-radius:20px;font-size:12px;background:#e5e7eb}
+.foi{font-weight:900;font-size:18px}
+
+@media(max-width:768px){
+  th,td{font-size:12px}
+}
 </style>
 </head>
 
 <body>
-
 <header>
-  <h1>🚀 Index PRO+ – Feed Opportunity Index</h1>
-  <small>TikTok Affiliate Intelligence | Single User</small>
+  <h2>🚀 Index PRO+</h2>
+  <small>TikTok Affiliate Intelligence</small>
 </header>
 
 <div class="container">
 
-<!-- ===== DASHBOARD ===== -->
-<div class="grid">
-  <div class="card"><h3>📦 สินค้าทั้งหมด</h3><div class="stat" id="total">0</div></div>
-  <div class="card"><h3>🚀 FOI ≥ 75</h3><div class="stat" id="easy">0</div></div>
-  <div class="card"><h3>💰 ROI สูง</h3><div class="stat" id="roiHigh">0</div></div>
-  <div class="card"><h3>🔥 หมวดมาแรง</h3><div class="stat" id="topCat">-</div></div>
-</div>
-
-<br>
-
-<!-- ===== FILTER ===== -->
-<div class="card">
-  <input id="search" placeholder="ค้นหาสินค้า">
-  <select id="catFilter"></select>
-  <button onclick="apply()">Filter</button>
-  <button class="secondary" onclick="exportCSV()">Export CSV</button>
-  <button class="danger" onclick="clearFirebase()">🗑 Clear Data</button>
-</div>
-
-<br>
-
-<!-- ===== TABLE ===== -->
-<div class="card">
+<div class="card table-wrap">
 <table>
 <thead>
 <tr>
@@ -84,92 +72,74 @@ small{color:#64748b}
 </table>
 </div>
 
-<br>
-
-<!-- ===== GPT ===== -->
-<div class="card">
-  <h3>🧠 Send to GPT (No API)</h3>
-  <textarea id="gptPrompt"></textarea>
-  <button onclick="sendToGPT()">📤 Copy & Open ChatGPT</button>
-</div>
-
 </div>
 
 <script>
-/* ================= FIREBASE CONFIG ================= */
-const firebaseConfig = {
+/* ===== Firebase ===== */
+firebase.initializeApp({
   apiKey: "AIzaSyXXXX",
   databaseURL: "https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "index-pro-tiktok"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const DB_ROOT = db.ref("imports");
+});
+const DB_ROOT = firebase.database().ref("imports");
 
-/* ================= DATA ================= */
-let DATA=[];
+/* ===== Helpers ===== */
+const imgFallback="https://via.placeholder.com/80?text=No+Image";
 
-/* ===== helpers ===== */
 const autoCategory=(n="",p=0)=>{
   n=n.toLowerCase();
-  if(/topper|ท็อปเปอร์/.test(n)) return "Topper";
-  if(/ผ้าปู/.test(n)) return "ผ้าปูที่นอน";
-  if(/หมอน/.test(n)) return "หมอน";
+  if(n.includes("topper")) return "Topper";
+  if(n.includes("ผ้าปู")) return "ผ้าปูที่นอน";
+  if(n.includes("หมอน")) return "หมอน";
   if(p>1000) return "Premium Bedding";
   return "Home & Sleep";
 };
 
-const sellScore=p=>Math.min(p.avgViews/1200,30)+Math.min(p.engagement*4,30);
-const feedScore=p=>Math.min(p.avgViews/1000,30)+Math.min(p.engagement*5,25);
+const sellScore=p=>Math.round(Math.min(p.avgViews/1200,30)+Math.min(p.engagement*4,30));
+const feedScore=p=>Math.round(Math.min(p.avgViews/1000,30)+Math.min(p.engagement*5,25));
 const FOI=p=>Math.round(sellScore(p)*0.4+feedScore(p)*0.6);
 const roiScore=p=>Math.round(p.foi*0.6+(p.engagement||0)*20);
 
-/* ================= LOAD ================= */
+/* ===== Load ===== */
 DB_ROOT.once("value",snap=>{
-  const map={};
-  snap.forEach(b=>{
-    b.val()?.items?.forEach(p=>{
-      p.image=p.image||"https://via.placeholder.com/80";
-      p.category=autoCategory(p.name,p.price);
-      p.sell=sellScore(p);
-      p.feed=feedScore(p);
-      p.foi=FOI(p);
-      p.roi=roiScore(p);
-      map[p.name]=p;
+  const list=[];
+  snap.forEach(batch=>{
+    batch.val()?.items?.forEach(p=>{
+      const img = (typeof p.image==="string" && p.image.startsWith("http"))
+        ? p.image
+        : imgFallback;
+
+      const item={
+        ...p,
+        image: img,
+        shop: p.shop || "-",
+        category: autoCategory(p.name,p.price),
+      };
+      item.sell=sellScore(item);
+      item.feed=feedScore(item);
+      item.foi=FOI(item);
+      item.roi=roiScore(item);
+
+      list.push(item);
     });
   });
-  DATA=Object.values(map);
-  dashboard(); buildCat(); render(DATA); buildGPT();
+  render(list);
 });
 
-/* ================= UI ================= */
-function dashboard(){
-  total.innerText=DATA.length;
-  easy.innerText=DATA.filter(p=>p.foi>=75).length;
-  roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
-  const c={};DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
-  topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
-}
-function buildCat(){
-  catFilter.innerHTML='<option value="">ทุกหมวด</option>';
-  [...new Set(DATA.map(p=>p.category))].forEach(c=>{
-    catFilter.innerHTML+=`<option>${c}</option>`;
-  });
-}
-function apply(){
-  render(DATA.filter(p=>
-    (!search.value||p.name.includes(search.value)) &&
-    (!catFilter.value||p.category===catFilter.value)
-  ));
-}
+/* ===== Render ===== */
 function render(list){
   tb.innerHTML="";
   list.sort((a,b)=>b.foi-a.foi).forEach((p,i)=>{
     tb.innerHTML+=`
 <tr>
 <td>${i+1}</td>
-<td><div class="product"><img src="${p.image}"><b>${p.name}</b></div></td>
-<td>${p.shop||"-"}</td>
+<td>
+  <div class="product">
+    <img src="${p.image}" onerror="this.src='${imgFallback}'">
+    <b>${p.name}</b>
+  </div>
+</td>
+<td>${p.shop}</td>
 <td><span class="badge">${p.category}</span></td>
 <td class="foi">${p.foi}</td>
 <td>${p.roi}</td>
@@ -179,32 +149,6 @@ function render(list){
 </tr>`;
   });
 }
-
-/* ================= GPT ================= */
-function buildGPT(){
-  gptPrompt.value=
-    "คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\n"+
-    DATA.slice(0,10).map((p,i)=>`${i+1}. ${p.name} (FOI ${p.foi})`).join("\n");
-}
-function sendToGPT(){
-  navigator.clipboard.writeText(gptPrompt.value);
-  window.open("https://chat.openai.com","_blank");
-}
-
-/* ================= EXPORT / CLEAR ================= */
-function exportCSV(){
-  let csv="name,foi,roi\n";
-  DATA.forEach(p=>csv+=`${p.name},${p.foi},${p.roi}\n`);
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([csv]));
-  a.download="index_pro.csv";
-  a.click();
-}
-function clearFirebase(){
-  if(confirm("ล้างข้อมูลทั้งหมด?"))
-    DB_ROOT.remove().then(()=>location.reload());
-}
 </script>
-
 </body>
 </html>
