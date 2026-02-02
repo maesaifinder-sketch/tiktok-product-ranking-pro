@@ -17,7 +17,7 @@ table{width:100%;border-collapse:collapse}
 th,td{padding:12px;border-bottom:1px solid #eee}
 th{background:#f8fafc}
 .rank{font-weight:900}
-.foi{font-size:22px;font-weight:900;color:#0f172a}
+.foi{font-size:22px;font-weight:900}
 button,input,select,textarea{
   padding:10px;border-radius:10px;border:1px solid #cbd5f5
 }
@@ -26,6 +26,7 @@ button.secondary{background:#475569}
 button.danger{background:#dc2626}
 textarea{width:100%;min-height:160px}
 small{color:#64748b}
+hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 </style>
 </head>
 
@@ -54,7 +55,21 @@ small{color:#64748b}
   <select id="catFilter"></select>
   <button onclick="apply()">Filter</button>
   <button class="secondary" onclick="exportCSV()">Export CSV</button>
-  <button class="danger" onclick="clearData()">🧹 เคลียร์ข้อมูลทั้งหมด</button>
+  <button class="danger" onclick="clearData()">🧹 เคลียร์ข้อมูล</button>
+</div>
+
+<br>
+
+<!-- CATEGORY MANAGER -->
+<div class="card">
+  <h3>🗂 จัดการหมวดหมู่</h3>
+
+  <input id="catName" placeholder="ชื่อหมวด เช่น Topper Premium">
+  <input id="catRegex" placeholder="Keyword / Regex เช่น topper|ท็อปเปอร์">
+  <button onclick="addCategory()">➕ เพิ่มหมวด</button>
+
+  <hr>
+  <div id="catList"></div>
 </div>
 
 <br>
@@ -74,9 +89,9 @@ small{color:#64748b}
 
 <br>
 
-<!-- SEND TO GPT -->
+<!-- GPT -->
 <div class="card">
-  <h3>🧠 Send to GPT (ไม่ใช้ API)</h3>
+  <h3>🧠 Send to GPT</h3>
   <textarea id="gptPrompt"></textarea>
   <button onclick="sendToGPT()">📤 Copy & Open ChatGPT</button>
 </div>
@@ -85,105 +100,113 @@ small{color:#64748b}
 
 <script>
 /* ================= FIREBASE ================= */
-const DB_ROOT = "https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
-const IMPORT_PATH = "/imports.json";
+const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
+const IMPORT_PATH="/imports.json";
 
+/* ================= CATEGORY STORE ================= */
+const CAT_KEY="INDEX_PRO_CATEGORIES";
+
+const DEFAULT_CATS=[
+  {name:"Topper",regex:"topper|ท็อปเปอร์"},
+  {name:"ผ้าปูที่นอน",regex:"ผ้าปู|bed sheet"},
+  {name:"หมอน",regex:"หมอน|pillow"},
+  {name:"ผ้าห่ม",regex:"ผ้าห่ม|blanket"},
+  {name:"Premium Bedding",regex:"premium"}
+];
+
+let CATEGORIES=JSON.parse(localStorage.getItem(CAT_KEY))||DEFAULT_CATS;
 let DATA=[];
 
 /* ================= CATEGORY ================= */
+function saveCat(){
+  localStorage.setItem(CAT_KEY,JSON.stringify(CATEGORIES));
+  renderCatManager();
+  reloadCategory();
+}
+
+function addCategory(){
+  if(!catName.value||!catRegex.value) return alert("กรอกให้ครบ");
+  CATEGORIES.unshift({name:catName.value,regex:catRegex.value});
+  catName.value="";catRegex.value="";
+  saveCat();
+}
+
+function removeCategory(i){
+  if(!confirm("ลบหมวดนี้?")) return;
+  CATEGORIES.splice(i,1);
+  saveCat();
+}
+
+function renderCatManager(){
+  catList.innerHTML="";
+  CATEGORIES.forEach((c,i)=>{
+    catList.innerHTML+=`
+    <div>
+      <strong>${c.name}</strong>
+      <small>(${c.regex})</small>
+      <button class="danger" onclick="removeCategory(${i})">ลบ</button>
+    </div>`;
+  });
+}
+
 function autoCategory(name="",price=0){
   name=name.toLowerCase();
-  if(/topper|ท็อปเปอร์/.test(name)) return "Topper";
-  if(/ผ้าปู|bed sheet/.test(name)) return "ผ้าปูที่นอน";
-  if(/หมอน|pillow/.test(name)) return "หมอน";
-  if(/ผ้าห่ม|blanket/.test(name)) return "ผ้าห่ม";
+  for(const c of CATEGORIES){
+    if(new RegExp(c.regex,"i").test(name)) return c.name;
+  }
   if(price>1000) return "Premium Bedding";
   return "Home & Sleep";
 }
 
 /* ================= SCORE ================= */
-const sellScore=p=>Math.round(
-  Math.min((p.avgViews||0)/1200,30)+
-  Math.min((p.engagement||0)*4,30)+
-  Math.min((p.creatorRepeat||0.3)*100,20)+
-  Math.min(p.hashtagGrowth||15,20)
-);
-
-const feedScore=p=>Math.round(
-  Math.min((p.avgViews||0)/1000,30)+
-  Math.min((p.engagement||0)*5,25)+
-  Math.min(p.hashtagGrowth||15,15)+
-  Math.max(0,15-(p.videos||20))+
-  Math.min((p.creatorRepeat||0.3)*100,15)
-);
-
+const sellScore=p=>Math.round(Math.min((p.avgViews||0)/1200,30)+Math.min((p.engagement||0)*4,30));
+const feedScore=p=>Math.round(Math.min((p.avgViews||0)/1000,30)+Math.min((p.engagement||0)*5,25));
 const FOI=p=>Math.round(sellScore(p)*0.4+feedScore(p)*0.6);
-
-const roiScore=p=>{
-  const pricePenalty = (p.price||500)/100;
-  return Math.round(
-    p.foi*0.5 +
-    (p.engagement||0.1)*20 +
-    (p.creatorRepeat||0.3)*30 -
-    pricePenalty
-  );
-};
+const roiScore=p=>Math.round(p.foi*0.6+(p.engagement||0.1)*20);
 
 /* ================= LOAD ================= */
 async function load(){
-  const r = await fetch(DB_ROOT + IMPORT_PATH);
-  const json = await r.json();
-  DATA = [];
-
-  if(!json){
-    render([]);
-    dashboard();
-    return;
-  }
-
-  Object.values(json).forEach(batch=>{
-    (batch.items || []).forEach(p=>{
-      if(!p.name) return;
-      p.category = autoCategory(p.name, p.price);
-      p.sell = sellScore(p);
-      p.feed = feedScore(p);
-      p.foi = FOI(p);
-      p.roi = roiScore(p);
+  const r=await fetch(DB_ROOT+IMPORT_PATH);
+  const json=await r.json();
+  DATA=[];
+  if(!json) return;
+  Object.values(json).forEach(b=>{
+    (b.items||[]).forEach(p=>{
+      p.category=autoCategory(p.name,p.price);
+      p.sell=sellScore(p);
+      p.feed=feedScore(p);
+      p.foi=FOI(p);
+      p.roi=roiScore(p);
       DATA.push(p);
     });
   });
+  reloadCategory();
+}
 
+/* ================= UI ================= */
+function reloadCategory(){
   dashboard();
   filterCat();
   render(DATA);
   buildGPT();
 }
 
-/* ================= UI ================= */
 function dashboard(){
   total.innerText=DATA.length;
   easy.innerText=DATA.filter(p=>p.foi>=75).length;
   roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
-
-  const c={};
-  DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
-  topCat.innerText = Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0] || "-";
+  const c={};DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
+  topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
 }
 
 function filterCat(){
   catFilter.innerHTML='<option value="">ทุกหมวด</option>';
-  [...new Set(DATA.map(p=>p.category))].forEach(c=>{
-    catFilter.innerHTML+=`<option>${c}</option>`;
-  });
+  [...new Set(DATA.map(p=>p.category))].forEach(c=>catFilter.innerHTML+=`<option>${c}</option>`);
 }
 
 function apply(){
-  const q=search.value.toLowerCase();
-  const c=catFilter.value;
-  render(DATA.filter(p=>
-    (!q||p.name.toLowerCase().includes(q)) &&
-    (!c||p.category===c)
-  ));
+  const q=search.value.toLowerCase(),c=catFilter.value;
+  render(DATA.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!c||p.category===c)));
 }
 
 function render(list){
@@ -191,65 +214,35 @@ function render(list){
   list.sort((a,b)=>b.foi-a.foi).forEach((p,i)=>{
     tb.innerHTML+=`
 <tr>
-<td class="rank">#${i+1}</td>
-<td><strong>${p.name}</strong><br><small>${p.shop||""}</small></td>
+<td>#${i+1}</td>
+<td>${p.name}<br><small>${p.shop||""}</small></td>
 <td><span class="badge">${p.category}</span></td>
 <td class="foi">${p.foi}</td>
 <td>${p.roi}</td>
 <td>${p.sell}</td>
 <td>${p.feed}</td>
-<td>${p.roi>=70?"💰 น่าทำเงิน":"⚠️ กำไรบาง"}</td>
+<td>${p.roi>=70?"💰":"⚠️"}</td>
 </tr>`;
   });
 }
 
-/* ================= CLEAR DATA ================= */
-async function clearData(){
-  if(!confirm("⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลทั้งหมด?")) return;
-  if(!confirm("❌ การลบนี้ไม่สามารถกู้คืนได้ แน่ใจจริง ๆ ?")) return;
-
-  await fetch(DB_ROOT + IMPORT_PATH, { method:"DELETE" });
-
-  DATA=[];
-  render([]);
-  dashboard();
-  filterCat();
-  gptPrompt.value="";
-
-  alert("🧹 เคลียร์ข้อมูลทั้งหมดเรียบร้อยแล้ว");
-}
-
 /* ================= GPT ================= */
 function buildGPT(){
-  const top=DATA.slice(0,10);
-  let t=`คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\nวิเคราะห์สินค้าต่อไปนี้และแนะนำแนวทำคลิป + Script pro\n\n`;
-  top.forEach((p,i)=>{
-    t+=`${i+1}. ${p.name}
-- หมวด: ${p.category}
-- FOI: ${p.foi}
-- ROI: ${p.roi}
-- ความเห็น: ${p.roi>=70?"ควรดันขาย":"ทดสอบตลาด"}\n\n`;
-  });
-  gptPrompt.value=t;
+  gptPrompt.value=DATA.slice(0,10).map((p,i)=>`${i+1}. ${p.name} (${p.category}) FOI:${p.foi}`).join("\n");
 }
-
 function sendToGPT(){
   navigator.clipboard.writeText(gptPrompt.value);
   window.open("https://chat.openai.com","_blank");
 }
 
-/* ================= EXPORT ================= */
-function exportCSV(){
-  let csv="name,category,foi,roi,sell,feed\n";
-  DATA.forEach(p=>{
-    csv+=`${p.name},${p.category},${p.foi},${p.roi},${p.sell},${p.feed}\n`;
-  });
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-  a.download="index_pro_affiliate.csv";
-  a.click();
+/* ================= CLEAR ================= */
+async function clearData(){
+  if(!confirm("ลบข้อมูลทั้งหมด?"))return;
+  await fetch(DB_ROOT+IMPORT_PATH,{method:"DELETE"});
+  DATA=[];reloadCategory();
 }
 
+renderCatManager();
 load();
 </script>
 
