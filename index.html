@@ -23,6 +23,7 @@ button,input,select,textarea{
 }
 button{background:#020617;color:#fff;cursor:pointer}
 button.secondary{background:#475569}
+button.danger{background:#dc2626}
 textarea{width:100%;min-height:160px}
 small{color:#64748b}
 </style>
@@ -53,6 +54,7 @@ small{color:#64748b}
   <select id="catFilter"></select>
   <button onclick="apply()">Filter</button>
   <button class="secondary" onclick="exportCSV()">Export CSV</button>
+  <button class="danger" onclick="clearData()">🧹 เคลียร์ข้อมูลทั้งหมด</button>
 </div>
 
 <br>
@@ -127,30 +129,26 @@ const roiScore=p=>{
   );
 };
 
-/* ================= LOAD (FIXED) ================= */
+/* ================= LOAD ================= */
 async function load(){
   const r = await fetch(DB_ROOT + IMPORT_PATH);
   const json = await r.json();
-
   DATA = [];
 
   if(!json){
-    console.warn("❌ ไม่พบข้อมูล imports");
     render([]);
+    dashboard();
     return;
   }
 
-  // รวม items ทุก import (หลายครั้ง / หลายคน)
   Object.values(json).forEach(batch=>{
     (batch.items || []).forEach(p=>{
       if(!p.name) return;
-
       p.category = autoCategory(p.name, p.price);
       p.sell = sellScore(p);
       p.feed = feedScore(p);
       p.foi = FOI(p);
       p.roi = roiScore(p);
-
       DATA.push(p);
     });
   });
@@ -194,7 +192,7 @@ function render(list){
     tb.innerHTML+=`
 <tr>
 <td class="rank">#${i+1}</td>
-<td>${p.name}</td>
+<td><strong>${p.name}</strong><br><small>${p.shop||""}</small></td>
 <td><span class="badge">${p.category}</span></td>
 <td class="foi">${p.foi}</td>
 <td>${p.roi}</td>
@@ -203,6 +201,22 @@ function render(list){
 <td>${p.roi>=70?"💰 น่าทำเงิน":"⚠️ กำไรบาง"}</td>
 </tr>`;
   });
+}
+
+/* ================= CLEAR DATA ================= */
+async function clearData(){
+  if(!confirm("⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลทั้งหมด?")) return;
+  if(!confirm("❌ การลบนี้ไม่สามารถกู้คืนได้ แน่ใจจริง ๆ ?")) return;
+
+  await fetch(DB_ROOT + IMPORT_PATH, { method:"DELETE" });
+
+  DATA=[];
+  render([]);
+  dashboard();
+  filterCat();
+  gptPrompt.value="";
+
+  alert("🧹 เคลียร์ข้อมูลทั้งหมดเรียบร้อยแล้ว");
 }
 
 /* ================= GPT ================= */
