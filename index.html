@@ -14,7 +14,7 @@ header{background:#020617;color:#fff;padding:20px}
 .stat{font-size:30px;font-weight:900}
 .badge{padding:4px 10px;border-radius:20px;font-size:12px;background:#e5e7eb}
 table{width:100%;border-collapse:collapse}
-th,td{padding:12px;border-bottom:1px solid #eee;vertical-align:top}
+th,td{padding:12px;border-bottom:1px solid #eee}
 th{background:#f8fafc}
 .rank{font-weight:900}
 .foi{font-size:22px;font-weight:900;color:#0f172a}
@@ -23,16 +23,8 @@ button,input,select,textarea{
 }
 button{background:#020617;color:#fff;cursor:pointer}
 button.secondary{background:#475569}
-button.danger{background:#b91c1c}
 textarea{width:100%;min-height:160px}
 small{color:#64748b}
-.product{display:flex;gap:10px;align-items:center}
-.product img{
-  width:52px;height:52px;border-radius:10px;
-  object-fit:cover;background:#eee;flex-shrink:0
-}
-.shop{font-size:12px;color:#475569}
-.link{font-size:12px;color:#2563eb;text-decoration:none}
 </style>
 </head>
 
@@ -61,7 +53,6 @@ small{color:#64748b}
   <select id="catFilter"></select>
   <button onclick="apply()">Filter</button>
   <button class="secondary" onclick="exportCSV()">Export CSV</button>
-  <button class="danger" onclick="clearFirebase()">🗑 Clear Firebase Data</button>
 </div>
 
 <br>
@@ -71,15 +62,8 @@ small{color:#64748b}
 <table>
 <thead>
 <tr>
-<th>#</th>
-<th>สินค้า</th>
-<th>ร้านค้า</th>
-<th>หมวด</th>
-<th>FOI</th>
-<th>ROI</th>
-<th>Sell</th>
-<th>Feed</th>
-<th>สถานะ</th>
+<th>#</th><th>สินค้า</th><th>หมวด</th>
+<th>FOI</th><th>ROI</th><th>Sell</th><th>Feed</th><th>สถานะ</th>
 </tr>
 </thead>
 <tbody id="tb"></tbody>
@@ -88,7 +72,7 @@ small{color:#64748b}
 
 <br>
 
-<!-- GPT -->
+<!-- SEND TO GPT -->
 <div class="card">
   <h3>🧠 Send to GPT (ไม่ใช้ API)</h3>
   <textarea id="gptPrompt"></textarea>
@@ -99,8 +83,9 @@ small{color:#64748b}
 
 <script>
 /* ================= FIREBASE ================= */
-const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
-const IMPORT_PATH="/imports.json";
+const DB_ROOT = "https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
+const IMPORT_PATH = "/imports.json";
+
 let DATA=[];
 
 /* ================= CATEGORY ================= */
@@ -121,6 +106,7 @@ const sellScore=p=>Math.round(
   Math.min((p.creatorRepeat||0.3)*100,20)+
   Math.min(p.hashtagGrowth||15,20)
 );
+
 const feedScore=p=>Math.round(
   Math.min((p.avgViews||0)/1000,30)+
   Math.min((p.engagement||0)*5,25)+
@@ -128,52 +114,46 @@ const feedScore=p=>Math.round(
   Math.max(0,15-(p.videos||20))+
   Math.min((p.creatorRepeat||0.3)*100,15)
 );
+
 const FOI=p=>Math.round(sellScore(p)*0.4+feedScore(p)*0.6);
+
 const roiScore=p=>{
-  const pricePenalty=(p.price||500)/100;
+  const pricePenalty = (p.price||500)/100;
   return Math.round(
-    p.foi*0.5+
-    (p.engagement||0.1)*20+
-    (p.creatorRepeat||0.3)*30-
+    p.foi*0.5 +
+    (p.engagement||0.1)*20 +
+    (p.creatorRepeat||0.3)*30 -
     pricePenalty
   );
 };
 
-/* ================= LOAD + DEDUPE ================= */
+/* ================= LOAD (FIXED) ================= */
 async function load(){
-  let json={};
-  try{
-    const r=await fetch(DB_ROOT+IMPORT_PATH);
-    json=await r.json()||{};
-  }catch(e){}
+  const r = await fetch(DB_ROOT + IMPORT_PATH);
+  const json = await r.json();
 
-  const map={};
+  DATA = [];
 
+  if(!json){
+    console.warn("❌ ไม่พบข้อมูล imports");
+    render([]);
+    return;
+  }
+
+  // รวม items ทุก import (หลายครั้ง / หลายคน)
   Object.values(json).forEach(batch=>{
-    if(!batch || !Array.isArray(batch.items)) return;
+    (batch.items || []).forEach(p=>{
+      if(!p.name) return;
 
-    batch.items.forEach(p=>{
-      if(!p || !p.name) return;
+      p.category = autoCategory(p.name, p.price);
+      p.sell = sellScore(p);
+      p.feed = feedScore(p);
+      p.foi = FOI(p);
+      p.roi = roiScore(p);
 
-      p.image=p.image||"https://via.placeholder.com/80";
-      p.url=p.url||"#";
-      p.shop=p.shop||"-";
-
-      p.category=autoCategory(p.name,p.price);
-      p.sell=sellScore(p);
-      p.feed=feedScore(p);
-      p.foi=FOI(p);
-      p.roi=roiScore(p);
-
-      const key=(p.name+p.shop).toLowerCase();
-
-      if(!map[key] || map[key].foi < p.foi){
-        map[key]=p;
-      }
+      DATA.push(p);
     });
   });
-
-  DATA=Object.values(map);
 
   dashboard();
   filterCat();
@@ -186,9 +166,10 @@ function dashboard(){
   total.innerText=DATA.length;
   easy.innerText=DATA.filter(p=>p.foi>=75).length;
   roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
+
   const c={};
   DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
-  topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
+  topCat.innerText = Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0] || "-";
 }
 
 function filterCat(){
@@ -213,16 +194,7 @@ function render(list){
     tb.innerHTML+=`
 <tr>
 <td class="rank">#${i+1}</td>
-<td>
-  <div class="product">
-    <img src="${p.image}">
-    <div>
-      <b>${p.name}</b><br>
-      <a class="link" href="${p.url}" target="_blank">เปิดสินค้า</a>
-    </div>
-  </div>
-</td>
-<td class="shop">${p.shop}</td>
+<td>${p.name}</td>
 <td><span class="badge">${p.category}</span></td>
 <td class="foi">${p.foi}</td>
 <td>${p.roi}</td>
@@ -235,12 +207,14 @@ function render(list){
 
 /* ================= GPT ================= */
 function buildGPT(){
-  let t=`คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\n`;
-  DATA.slice(0,10).forEach((p,i)=>{
+  const top=DATA.slice(0,10);
+  let t=`คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\nวิเคราะห์สินค้าต่อไปนี้และแนะนำแนวทำคลิป + Script pro\n\n`;
+  top.forEach((p,i)=>{
     t+=`${i+1}. ${p.name}
-- ร้าน: ${p.shop}
+- หมวด: ${p.category}
 - FOI: ${p.foi}
-- ROI: ${p.roi}\n\n`;
+- ROI: ${p.roi}
+- ความเห็น: ${p.roi>=70?"ควรดันขาย":"ทดสอบตลาด"}\n\n`;
   });
   gptPrompt.value=t;
 }
@@ -252,22 +226,14 @@ function sendToGPT(){
 
 /* ================= EXPORT ================= */
 function exportCSV(){
-  let csv="name,shop,category,foi,roi,url\n";
+  let csv="name,category,foi,roi,sell,feed\n";
   DATA.forEach(p=>{
-    csv+=`${p.name},${p.shop},${p.category},${p.foi},${p.roi},${p.url}\n`;
+    csv+=`${p.name},${p.category},${p.foi},${p.roi},${p.sell},${p.feed}\n`;
   });
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
   a.download="index_pro_affiliate.csv";
   a.click();
-}
-
-/* ================= CLEAR FIREBASE ================= */
-function clearFirebase(){
-  if(!confirm("⚠️ ล้างข้อมูลทั้งหมดใน Firebase ใช่หรือไม่?")) return;
-  fetch(DB_ROOT+IMPORT_PATH,{method:"DELETE"})
-    .then(()=>alert("✅ ล้างข้อมูล Firebase เรียบร้อย"))
-    .then(()=>location.reload());
 }
 
 load();
