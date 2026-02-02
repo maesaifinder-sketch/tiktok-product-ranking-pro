@@ -1,131 +1,276 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Index PRO+ | Showcase</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Index PRO+ – TikTok Feed Intelligence</title>
 
 <style>
-body{
-  font-family: system-ui;
-  background:#f5f6f8;
-  margin:0;
-  padding:20px;
+body{margin:0;font-family:system-ui;background:#f1f5f9}
+header{background:#020617;color:#fff;padding:20px}
+.container{max-width:1500px;margin:auto;padding:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card{background:#fff;border-radius:16px;padding:18px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.stat{font-size:30px;font-weight:900}
+.badge{padding:4px 10px;border-radius:20px;font-size:12px;background:#e5e7eb}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px;border-bottom:1px solid #eee;vertical-align:top}
+th{background:#f8fafc}
+.rank{font-weight:900}
+.foi{font-size:22px;font-weight:900;color:#0f172a}
+button,input,select,textarea{
+  padding:10px;border-radius:10px;border:1px solid #cbd5f5
 }
-h1{margin-bottom:10px}
-input{
-  width:100%;
-  padding:12px;
-  font-size:16px;
+button{background:#020617;color:#fff;cursor:pointer}
+button.secondary{background:#475569}
+button.danger{background:#b91c1c}
+textarea{width:100%;min-height:160px}
+small{color:#64748b}
+.product{display:flex;gap:10px;align-items:center}
+.product img{
+  width:52px;height:52px;border-radius:10px;
+  object-fit:cover;background:#eee;flex-shrink:0
 }
-button{
-  margin-top:10px;
-  padding:12px 16px;
-  font-size:16px;
-  cursor:pointer;
-}
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-  gap:16px;
-  margin-top:20px;
-}
-.card{
-  background:#fff;
-  border-radius:12px;
-  padding:10px;
-  box-shadow:0 4px 10px rgba(0,0,0,.05);
-}
-.card img{
-  width:100%;
-  border-radius:8px;
-}
-.name{
-  font-size:14px;
-  margin:8px 0;
-}
-.price{
-  color:#e60023;
-  font-weight:bold;
-}
-.actions{
-  display:flex;
-  gap:6px;
-  margin-top:8px;
-}
-.actions a{
-  flex:1;
-  text-align:center;
-  padding:8px;
-  font-size:13px;
-  border-radius:6px;
-  text-decoration:none;
-  background:#eee;
-  color:#000;
-}
+.shop{font-size:12px;color:#475569}
+.link{font-size:12px;color:#2563eb;text-decoration:none}
 </style>
 </head>
 
 <body>
 
-<h1>🛍️ TikTok Showcase Viewer</h1>
-<input id="urlInput" placeholder="วาง URL โชว์เคส TikTok ที่นี่" />
-<button onclick="loadProducts()">แสดงสินค้า</button>
+<header>
+  <h1>🚀 Index PRO+ – Feed Opportunity Index</h1>
+  <small>Kalodata-style | Affiliate Intelligence | No API</small>
+</header>
 
-<div id="result" class="grid"></div>
+<div class="container">
+
+<!-- DASHBOARD -->
+<div class="grid">
+  <div class="card"><h3>📦 สินค้าทั้งหมด</h3><div class="stat" id="total">0</div></div>
+  <div class="card"><h3>🚀 FOI ≥ 75</h3><div class="stat" id="easy">0</div></div>
+  <div class="card"><h3>💰 ROI สูง</h3><div class="stat" id="roiHigh">0</div></div>
+  <div class="card"><h3>🔥 หมวดมาแรง</h3><div class="stat" id="topCat">-</div></div>
+</div>
+
+<br>
+
+<!-- FILTER -->
+<div class="card">
+  <input id="search" placeholder="ค้นหาสินค้า">
+  <select id="catFilter"></select>
+  <button onclick="apply()">Filter</button>
+  <button class="secondary" onclick="exportCSV()">Export CSV</button>
+  <button class="danger" onclick="clearFirebase()">🗑 Clear Firebase Data</button>
+</div>
+
+<br>
+
+<!-- TABLE -->
+<div class="card">
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>สินค้า</th>
+<th>ร้านค้า</th>
+<th>หมวด</th>
+<th>FOI</th>
+<th>ROI</th>
+<th>Sell</th>
+<th>Feed</th>
+<th>สถานะ</th>
+</tr>
+</thead>
+<tbody id="tb"></tbody>
+</table>
+</div>
+
+<br>
+
+<!-- GPT -->
+<div class="card">
+  <h3>🧠 Send to GPT (ไม่ใช้ API)</h3>
+  <textarea id="gptPrompt"></textarea>
+  <button onclick="sendToGPT()">📤 Copy & Open ChatGPT</button>
+</div>
+
+</div>
 
 <script>
-const FIREBASE =
-  "https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app/imports.json";
+/* ================= FIREBASE ================= */
+const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
+const IMPORT_PATH="/imports.json";
+let DATA=[];
 
-async function loadProducts(){
-  const url = document.getElementById("urlInput").value.trim();
-  if(!url){
-    alert("กรุณาวาง URL");
-    return;
-  }
-
-  const res = await fetch(FIREBASE);
-  const data = await res.json();
-
-  const allItems = [];
-  Object.values(data || {}).forEach(batch=>{
-    if(batch.items){
-      batch.items.forEach(it=>{
-        if(it.url && it.url.includes("tiktok")){
-          allItems.push(it);
-        }
-      });
-    }
-  });
-
-  render(allItems);
+/* ================= CATEGORY ================= */
+function autoCategory(name="",price=0){
+  name=name.toLowerCase();
+  if(/topper|ท็อปเปอร์/.test(name)) return "Topper";
+  if(/ผ้าปู|bed sheet/.test(name)) return "ผ้าปูที่นอน";
+  if(/หมอน|pillow/.test(name)) return "หมอน";
+  if(/ผ้าห่ม|blanket/.test(name)) return "ผ้าห่ม";
+  if(price>1000) return "Premium Bedding";
+  return "Home & Sleep";
 }
 
-function render(items){
-  const box = document.getElementById("result");
-  box.innerHTML = "";
+/* ================= SCORE ================= */
+const sellScore=p=>Math.round(
+  Math.min((p.avgViews||0)/1200,30)+
+  Math.min((p.engagement||0)*4,30)+
+  Math.min((p.creatorRepeat||0.3)*100,20)+
+  Math.min(p.hashtagGrowth||15,20)
+);
+const feedScore=p=>Math.round(
+  Math.min((p.avgViews||0)/1000,30)+
+  Math.min((p.engagement||0)*5,25)+
+  Math.min(p.hashtagGrowth||15,15)+
+  Math.max(0,15-(p.videos||20))+
+  Math.min((p.creatorRepeat||0.3)*100,15)
+);
+const FOI=p=>Math.round(sellScore(p)*0.4+feedScore(p)*0.6);
+const roiScore=p=>{
+  const pricePenalty=(p.price||500)/100;
+  return Math.round(
+    p.foi*0.5+
+    (p.engagement||0.1)*20+
+    (p.creatorRepeat||0.3)*30-
+    pricePenalty
+  );
+};
 
-  if(!items.length){
-    box.innerHTML = "<p>ไม่พบสินค้าในฐานข้อมูล</p>";
-    return;
-  }
+/* ================= LOAD + DEDUPE ================= */
+async function load(){
+  let json={};
+  try{
+    const r=await fetch(DB_ROOT+IMPORT_PATH);
+    json=await r.json()||{};
+  }catch(e){}
 
-  items.forEach(it=>{
-    const div = document.createElement("div");
-    div.className="card";
-    div.innerHTML=`
-      <img src="${it.image || ''}">
-      <div class="name">${it.name || '-'}</div>
-      <div class="price">฿${it.price || '-'}</div>
-      <div class="actions">
-        <a href="${it.image}" download>⬇️ รูป</a>
-        <a href="${it.url}" target="_blank">🔗 สินค้า</a>
-      </div>
-    `;
-    box.appendChild(div);
+  const map={};
+
+  Object.values(json).forEach(batch=>{
+    if(!batch || !Array.isArray(batch.items)) return;
+
+    batch.items.forEach(p=>{
+      if(!p || !p.name) return;
+
+      p.image=p.image||"https://via.placeholder.com/80";
+      p.url=p.url||"#";
+      p.shop=p.shop||"-";
+
+      p.category=autoCategory(p.name,p.price);
+      p.sell=sellScore(p);
+      p.feed=feedScore(p);
+      p.foi=FOI(p);
+      p.roi=roiScore(p);
+
+      const key=(p.name+p.shop).toLowerCase();
+
+      if(!map[key] || map[key].foi < p.foi){
+        map[key]=p;
+      }
+    });
+  });
+
+  DATA=Object.values(map);
+
+  dashboard();
+  filterCat();
+  render(DATA);
+  buildGPT();
+}
+
+/* ================= UI ================= */
+function dashboard(){
+  total.innerText=DATA.length;
+  easy.innerText=DATA.filter(p=>p.foi>=75).length;
+  roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
+  const c={};
+  DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
+  topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
+}
+
+function filterCat(){
+  catFilter.innerHTML='<option value="">ทุกหมวด</option>';
+  [...new Set(DATA.map(p=>p.category))].forEach(c=>{
+    catFilter.innerHTML+=`<option>${c}</option>`;
   });
 }
+
+function apply(){
+  const q=search.value.toLowerCase();
+  const c=catFilter.value;
+  render(DATA.filter(p=>
+    (!q||p.name.toLowerCase().includes(q)) &&
+    (!c||p.category===c)
+  ));
+}
+
+function render(list){
+  tb.innerHTML="";
+  list.sort((a,b)=>b.foi-a.foi).forEach((p,i)=>{
+    tb.innerHTML+=`
+<tr>
+<td class="rank">#${i+1}</td>
+<td>
+  <div class="product">
+    <img src="${p.image}">
+    <div>
+      <b>${p.name}</b><br>
+      <a class="link" href="${p.url}" target="_blank">เปิดสินค้า</a>
+    </div>
+  </div>
+</td>
+<td class="shop">${p.shop}</td>
+<td><span class="badge">${p.category}</span></td>
+<td class="foi">${p.foi}</td>
+<td>${p.roi}</td>
+<td>${p.sell}</td>
+<td>${p.feed}</td>
+<td>${p.roi>=70?"💰 น่าทำเงิน":"⚠️ กำไรบาง"}</td>
+</tr>`;
+  });
+}
+
+/* ================= GPT ================= */
+function buildGPT(){
+  let t=`คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\n`;
+  DATA.slice(0,10).forEach((p,i)=>{
+    t+=`${i+1}. ${p.name}
+- ร้าน: ${p.shop}
+- FOI: ${p.foi}
+- ROI: ${p.roi}\n\n`;
+  });
+  gptPrompt.value=t;
+}
+
+function sendToGPT(){
+  navigator.clipboard.writeText(gptPrompt.value);
+  window.open("https://chat.openai.com","_blank");
+}
+
+/* ================= EXPORT ================= */
+function exportCSV(){
+  let csv="name,shop,category,foi,roi,url\n";
+  DATA.forEach(p=>{
+    csv+=`${p.name},${p.shop},${p.category},${p.foi},${p.roi},${p.url}\n`;
+  });
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download="index_pro_affiliate.csv";
+  a.click();
+}
+
+/* ================= CLEAR FIREBASE ================= */
+function clearFirebase(){
+  if(!confirm("⚠️ ล้างข้อมูลทั้งหมดใน Firebase ใช่หรือไม่?")) return;
+  fetch(DB_ROOT+IMPORT_PATH,{method:"DELETE"})
+    .then(()=>alert("✅ ล้างข้อมูล Firebase เรียบร้อย"))
+    .then(()=>location.reload());
+}
+
+load();
 </script>
 
 </body>
