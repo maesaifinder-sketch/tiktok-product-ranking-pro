@@ -25,11 +25,10 @@ button{background:#020617;color:#fff;cursor:pointer}
 button.secondary{background:#475569}
 textarea{width:100%;min-height:160px}
 small{color:#64748b}
-.product{
-  display:flex;gap:10px;align-items:center
-}
+.product{display:flex;gap:10px;align-items:center}
 .product img{
-  width:52px;height:52px;border-radius:10px;object-fit:cover;background:#eee
+  width:52px;height:52px;border-radius:10px;
+  object-fit:cover;background:#eee;flex-shrink:0
 }
 .shop{font-size:12px;color:#475569}
 .link{font-size:12px;color:#2563eb;text-decoration:none}
@@ -87,7 +86,7 @@ small{color:#64748b}
 
 <br>
 
-<!-- SEND TO GPT -->
+<!-- GPT -->
 <div class="card">
   <h3>🧠 Send to GPT (ไม่ใช้ API)</h3>
   <textarea id="gptPrompt"></textarea>
@@ -141,20 +140,33 @@ const roiScore=p=>{
   );
 };
 
-/* ================= LOAD ================= */
+/* ================= LOAD (FIX กันพลาด) ================= */
 async function load(){
-  const r=await fetch(DB_ROOT+IMPORT_PATH);
-  const json=await r.json();
-  DATA=[];
+  let json={};
+  try{
+    const r=await fetch(DB_ROOT+IMPORT_PATH);
+    json=await r.json()||{};
+  }catch(e){
+    console.warn("Firebase load error",e);
+  }
 
-  Object.values(json||{}).forEach(batch=>{
-    (batch.items||[]).forEach(p=>{
-      if(!p.name) return;
+  DATA=[];
+  Object.values(json).forEach(batch=>{
+    if(!batch || !Array.isArray(batch.items)) return;
+
+    batch.items.forEach(p=>{
+      if(!p || !p.name) return;
+
+      p.image=p.image||"https://via.placeholder.com/80";
+      p.url=p.url||"#";
+      p.shop=p.shop||"-";
+
       p.category=autoCategory(p.name,p.price);
       p.sell=sellScore(p);
       p.feed=feedScore(p);
       p.foi=FOI(p);
       p.roi=roiScore(p);
+
       DATA.push(p);
     });
   });
@@ -170,6 +182,7 @@ function dashboard(){
   total.innerText=DATA.length;
   easy.innerText=DATA.filter(p=>p.foi>=75).length;
   roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
+
   const c={};
   DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
   topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
@@ -197,18 +210,16 @@ function render(list){
     tb.innerHTML+=`
 <tr>
 <td class="rank">#${i+1}</td>
-
 <td>
   <div class="product">
-    <img src="${p.image||'https://via.placeholder.com/80'}" loading="lazy">
+    <img src="${p.image}" loading="lazy">
     <div>
       <div><b>${p.name}</b></div>
-      <a class="link" href="${p.url||'#'}" target="_blank">เปิดสินค้า</a>
+      <a class="link" href="${p.url}" target="_blank">เปิดสินค้า</a>
     </div>
   </div>
 </td>
-
-<td class="shop">${p.shop||"-"}</td>
+<td class="shop">${p.shop}</td>
 <td><span class="badge">${p.category}</span></td>
 <td class="foi">${p.foi}</td>
 <td>${p.roi}</td>
@@ -222,7 +233,7 @@ function render(list){
 /* ================= GPT ================= */
 function buildGPT(){
   const top=DATA.slice(0,10);
-  let t=`คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\nวิเคราะห์สินค้าต่อไปนี้และแนะนำแนวทำคลิป + Script pro\n\n`;
+  let t=`คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\nวิเคราะห์สินค้าและแนะนำแนวทำคลิป + Script pro\n\n`;
   top.forEach((p,i)=>{
     t+=`${i+1}. ${p.name}
 - ร้าน: ${p.shop}
