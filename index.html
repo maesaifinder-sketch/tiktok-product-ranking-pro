@@ -30,6 +30,7 @@ button.danger{background:#b91c1c}
 textarea{width:100%;min-height:160px}
 .product{display:flex;gap:10px;align-items:center}
 .product img{width:52px;height:52px;border-radius:10px;object-fit:cover}
+small{color:#64748b}
 </style>
 </head>
 
@@ -37,11 +38,12 @@ textarea{width:100%;min-height:160px}
 
 <header>
   <h1>🚀 Index PRO+ – Feed Opportunity Index</h1>
-  <small>TikTok Affiliate Intelligence (Single User)</small>
+  <small>TikTok Affiliate Intelligence | Single User</small>
 </header>
 
 <div class="container">
 
+<!-- ===== DASHBOARD ===== -->
 <div class="grid">
   <div class="card"><h3>📦 สินค้าทั้งหมด</h3><div class="stat" id="total">0</div></div>
   <div class="card"><h3>🚀 FOI ≥ 75</h3><div class="stat" id="easy">0</div></div>
@@ -51,6 +53,7 @@ textarea{width:100%;min-height:160px}
 
 <br>
 
+<!-- ===== FILTER ===== -->
 <div class="card">
   <input id="search" placeholder="ค้นหาสินค้า">
   <select id="catFilter"></select>
@@ -61,12 +64,20 @@ textarea{width:100%;min-height:160px}
 
 <br>
 
+<!-- ===== TABLE ===== -->
 <div class="card">
 <table>
 <thead>
 <tr>
-<th>#</th><th>สินค้า</th><th>ร้าน</th><th>หมวด</th>
-<th>FOI</th><th>ROI</th><th>Sell</th><th>Feed</th><th>สถานะ</th>
+<th>#</th>
+<th>สินค้า</th>
+<th>ร้าน</th>
+<th>หมวด</th>
+<th>FOI</th>
+<th>ROI</th>
+<th>Sell</th>
+<th>Feed</th>
+<th>สถานะ</th>
 </tr>
 </thead>
 <tbody id="tb"></tbody>
@@ -75,6 +86,7 @@ textarea{width:100%;min-height:160px}
 
 <br>
 
+<!-- ===== GPT ===== -->
 <div class="card">
   <h3>🧠 Send to GPT (No API)</h3>
   <textarea id="gptPrompt"></textarea>
@@ -84,7 +96,7 @@ textarea{width:100%;min-height:160px}
 </div>
 
 <script>
-/* ================= FIREBASE ================= */
+/* ================= FIREBASE CONFIG ================= */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   databaseURL: "https://YOUR_PROJECT.firebaseio.com",
@@ -97,7 +109,7 @@ const DB_ROOT = db.ref("imports");
 /* ================= DATA ================= */
 let DATA=[];
 
-/* helpers */
+/* ===== helpers ===== */
 const autoCategory=(n="",p=0)=>{
   n=n.toLowerCase();
   if(/topper|ท็อปเปอร์/.test(n)) return "Topper";
@@ -112,7 +124,7 @@ const feedScore=p=>Math.min(p.avgViews/1000,30)+Math.min(p.engagement*5,25);
 const FOI=p=>Math.round(sellScore(p)*0.4+feedScore(p)*0.6);
 const roiScore=p=>Math.round(p.foi*0.6+(p.engagement||0)*20);
 
-/* load */
+/* ================= LOAD ================= */
 DB_ROOT.once("value",snap=>{
   const map={};
   snap.forEach(b=>{
@@ -127,10 +139,10 @@ DB_ROOT.once("value",snap=>{
     });
   });
   DATA=Object.values(map);
-  dashboard(); filterCat(); render(DATA); buildGPT();
+  dashboard(); buildCat(); render(DATA); buildGPT();
 });
 
-/* UI */
+/* ================= UI ================= */
 function dashboard(){
   total.innerText=DATA.length;
   easy.innerText=DATA.filter(p=>p.foi>=75).length;
@@ -138,7 +150,7 @@ function dashboard(){
   const c={};DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
   topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
 }
-function filterCat(){
+function buildCat(){
   catFilter.innerHTML='<option value="">ทุกหมวด</option>';
   [...new Set(DATA.map(p=>p.category))].forEach(c=>{
     catFilter.innerHTML+=`<option>${c}</option>`;
@@ -168,23 +180,25 @@ function render(list){
   });
 }
 
-/* GPT */
+/* ================= GPT ================= */
 function buildGPT(){
-  gptPrompt.value="คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\n"+
-  DATA.slice(0,10).map((p,i)=>`${i+1}. ${p.name} (FOI ${p.foi})`).join("\n");
+  gptPrompt.value=
+    "คุณคือผู้เชี่ยวชาญ TikTok Affiliate\n\n"+
+    DATA.slice(0,10).map((p,i)=>`${i+1}. ${p.name} (FOI ${p.foi})`).join("\n");
 }
 function sendToGPT(){
   navigator.clipboard.writeText(gptPrompt.value);
   window.open("https://chat.openai.com","_blank");
 }
 
-/* export / clear */
+/* ================= EXPORT / CLEAR ================= */
 function exportCSV(){
   let csv="name,foi,roi\n";
   DATA.forEach(p=>csv+=`${p.name},${p.foi},${p.roi}\n`);
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([csv]));
-  a.download="index_pro.csv";a.click();
+  a.download="index_pro.csv";
+  a.click();
 }
 function clearFirebase(){
   if(confirm("ล้างข้อมูลทั้งหมด?"))
