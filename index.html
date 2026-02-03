@@ -19,10 +19,7 @@ th{background:#f8fafc}
 .foi{font-size:22px;font-weight:900}
 
 button,input,select,textarea{
-  padding:10px;
-  border-radius:10px;
-  border:1px solid #cbd5f5;
-  font-family:inherit;
+  padding:10px;border-radius:10px;border:1px solid #cbd5f5;font-family:inherit
 }
 button{background:#020617;color:#fff;cursor:pointer}
 button.secondary{background:#475569}
@@ -31,29 +28,37 @@ textarea{width:100%;min-height:160px}
 small{color:#64748b}
 hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
-/* ================= CATEGORY SCROLL (UPDATED) ================= */
-.cat-scroll{
-  max-height:260px;              /* แสดง ~5-6 รายการ */
-  overflow-y:auto;
-  padding-right:6px;
-  -webkit-overflow-scrolling:touch; /* mobile smooth */
-  border-top:1px dashed #e5e7eb;
-}
+/* CATEGORY SCROLL */
+.cat-scroll{max-height:260px;overflow-y:auto;padding-right:6px}
+.cat-item{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 
-/* scrollbar style (desktop) */
-.cat-scroll::-webkit-scrollbar{
-  width:6px;
-}
-.cat-scroll::-webkit-scrollbar-thumb{
-  background:#c7d2fe;
-  border-radius:10px;
-}
-
-.cat-item{
+/* ===== Kalodata Pagination ===== */
+.pagination{
   display:flex;
-  justify-content:space-between;
+  gap:6px;
   align-items:center;
-  margin-bottom:8px;
+  flex-wrap:wrap;
+}
+.page-btn{
+  min-width:36px;
+  padding:6px 10px;
+  border-radius:8px;
+  border:1px solid #cbd5f5;
+  background:#fff;
+  cursor:pointer;
+  font-weight:600;
+}
+.page-btn.active{
+  background:#020617;
+  color:#fff;
+}
+.page-btn:disabled{
+  opacity:.4;
+  cursor:not-allowed;
+}
+.page-info{
+  font-size:14px;
+  color:#64748b;
 }
 </style>
 </head>
@@ -91,14 +96,10 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <!-- CATEGORY -->
 <div class="card">
   <h3>🗂 จัดการหมวดหมู่</h3>
-
-  <input id="catName" placeholder="ชื่อหมวด เช่น Topper Premium">
-  <input id="catRegex" placeholder="Keyword / Regex เช่น topper|ท็อปเปอร์">
+  <input id="catName" placeholder="ชื่อหมวด">
+  <input id="catRegex" placeholder="Keyword / Regex">
   <button onclick="addCategory()">➕ เพิ่มหมวด</button>
-
   <hr>
-
-  <!-- ✅ SCROLLABLE LIST -->
   <div id="catList" class="cat-scroll"></div>
 </div>
 
@@ -115,6 +116,20 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 </thead>
 <tbody id="tb"></tbody>
 </table>
+
+<!-- Pagination -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+  <div class="pagination" id="pagination"></div>
+  <div class="page-info">
+    แสดง
+    <select id="pageSize" onchange="changePageSize()">
+      <option>20</option>
+      <option>50</option>
+      <option>100</option>
+    </select>
+    รายการ / หน้า
+  </div>
+</div>
 </div>
 
 <br>
@@ -133,87 +148,73 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
 
+/* ================= PAGINATION STATE ================= */
+let CURRENT_PAGE=1;
+let PAGE_SIZE=20;
+let FILTERED_DATA=[];
+
 /* ================= CATEGORY ================= */
 const CAT_KEY="INDEX_PRO_CATEGORIES";
 const DEFAULT_CATS=[
   {name:"Topper",regex:"topper|ท็อปเปอร์"},
-  {name:"ผ้าปูที่นอน",regex:"ผ้าปู|bed sheet"},
-  {name:"หมอน",regex:"หมอน|pillow"},
-  {name:"ผ้าห่ม",regex:"ผ้าห่ม|blanket"},
-  {name:"Premium Bedding",regex:"premium"}
+  {name:"ผ้าปูที่นอน",regex:"ผ้าปู"},
+  {name:"หมอน",regex:"หมอน"},
+  {name:"ผ้าห่ม",regex:"ผ้าห่ม"},
 ];
-
 let CATEGORIES=JSON.parse(localStorage.getItem(CAT_KEY))||DEFAULT_CATS;
 let DATA=[];
 
 /* ================= CATEGORY CRUD ================= */
-function saveCat(){
-  localStorage.setItem(CAT_KEY,JSON.stringify(CATEGORIES));
-  renderCatManager();
-  reloadCategory();
-}
+function saveCat(){localStorage.setItem(CAT_KEY,JSON.stringify(CATEGORIES));renderCatManager();reload();}
 function addCategory(){
-  if(!catName.value||!catRegex.value) return alert("กรอกข้อมูลให้ครบ");
+  if(!catName.value||!catRegex.value)return;
   CATEGORIES.unshift({name:catName.value,regex:catRegex.value});
-  catName.value="";catRegex.value="";
+  catName.value=catRegex.value="";
   saveCat();
 }
-function removeCategory(i){
-  if(!confirm("ลบหมวดนี้?")) return;
-  CATEGORIES.splice(i,1);
-  saveCat();
-}
+function removeCategory(i){CATEGORIES.splice(i,1);saveCat();}
 function renderCatManager(){
   catList.innerHTML="";
   CATEGORIES.forEach((c,i)=>{
     catList.innerHTML+=`
       <div class="cat-item">
-        <div><strong>${c.name}</strong><br><small>${c.regex}</small></div>
+        <div><b>${c.name}</b><br><small>${c.regex}</small></div>
         <button class="danger" onclick="removeCategory(${i})">ลบ</button>
       </div>`;
   });
 }
 
-/* ================= CATEGORY AUTO ================= */
-function autoCategory(name="",price=0){
-  name=name.toLowerCase();
-  for(const c of CATEGORIES){
-    if(new RegExp(c.regex,"i").test(name)) return c.name;
-  }
-  if(price>1000) return "Premium Bedding";
-  return "Home & Sleep";
-}
-
 /* ================= SCORE ================= */
-const sellScore=p=>Math.round(Math.min((p.avgViews||0)/1200,30)+Math.min((p.engagement||0)*4,30));
-const feedScore=p=>Math.round(Math.min((p.avgViews||0)/1000,30)+Math.min((p.engagement||0)*5,25));
-const FOI=p=>Math.round(sellScore(p)*0.4+feedScore(p)*0.6);
-const roiScore=p=>Math.round(p.foi*0.6+(p.engagement||0.1)*20);
+const sellScore=p=>Math.round((p.avgViews||0)/1000);
+const feedScore=p=>Math.round((p.engagement||0)*30);
+const FOI=p=>Math.min(100,Math.round(sellScore(p)*0.4+feedScore(p)*0.6));
+const roiScore=p=>Math.round(p.foi*0.7);
 
 /* ================= LOAD ================= */
 async function load(){
   const r=await fetch(DB_ROOT+IMPORT_PATH);
-  const json=await r.json();
+  const j=await r.json();
+  if(!j)return;
   DATA=[];
-  if(!json) return;
-
-  Object.values(json).forEach(b=>{
+  Object.values(j).forEach(b=>{
     (b.items||[]).forEach(p=>{
-      p.shop=p.shop||p.shop_name||p.seller_name||"-";
-      p.category=autoCategory(p.name,p.price);
-      p.sell=sellScore(p);
-      p.feed=feedScore(p);
-      p.foi=FOI(p);
-      p.roi=roiScore(p);
+      p.shop=p.shop||"-";
+      p.category=CATEGORIES.find(c=>new RegExp(c.regex,"i").test(p.name))?.name||"อื่นๆ";
+      p.sell=sellScore(p);p.feed=feedScore(p);p.foi=FOI(p);p.roi=roiScore(p);
       DATA.push(p);
     });
   });
-  reloadCategory();
+  reload();
 }
 
 /* ================= UI ================= */
-function reloadCategory(){
-  dashboard();filterCat();render(DATA);buildGPT();
+function reload(){
+  dashboard();
+  filterCat();
+  FILTERED_DATA=[...DATA];
+  CURRENT_PAGE=1;
+  renderPage();
+  buildGPT();
 }
 function dashboard(){
   total.innerText=DATA.length;
@@ -228,14 +229,23 @@ function filterCat(){
 }
 function apply(){
   const q=search.value.toLowerCase(),c=catFilter.value;
-  render(DATA.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!c||p.category===c)));
+  FILTERED_DATA=DATA.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!c||p.category===c));
+  CURRENT_PAGE=1;
+  renderPage();
+}
+
+/* ================= RENDER ================= */
+function renderPage(){
+  const start=(CURRENT_PAGE-1)*PAGE_SIZE;
+  render(FILTERED_DATA.slice(start,start+PAGE_SIZE));
+  renderPagination();
 }
 function render(list){
   tb.innerHTML="";
   list.sort((a,b)=>b.foi-a.foi).forEach((p,i)=>{
     tb.innerHTML+=`
 <tr>
-<td>#${i+1}</td>
+<td>#${(CURRENT_PAGE-1)*PAGE_SIZE+i+1}</td>
 <td>${p.name}<br><small>${p.shop}</small></td>
 <td><span class="badge">${p.category}</span></td>
 <td class="foi">${p.foi}</td>
@@ -247,22 +257,36 @@ function render(list){
   });
 }
 
+/* ================= PAGINATION UI ================= */
+function renderPagination(){
+  const totalPages=Math.ceil(FILTERED_DATA.length/PAGE_SIZE);
+  if(totalPages<=1){pagination.innerHTML="";return;}
+  let html=`<button class="page-btn" ${CURRENT_PAGE===1?"disabled":""} onclick="gotoPage(${CURRENT_PAGE-1})">‹</button>`;
+  let start=Math.max(1,CURRENT_PAGE-2);
+  let end=Math.min(totalPages,start+4);
+  if(start>1)html+=`<button class="page-btn" onclick="gotoPage(1)">1</button>…`;
+  for(let i=start;i<=end;i++){
+    html+=`<button class="page-btn ${i===CURRENT_PAGE?"active":""}" onclick="gotoPage(${i})">${i}</button>`;
+  }
+  if(end<totalPages)html+=`…<button class="page-btn" onclick="gotoPage(${totalPages})">${totalPages}</button>`;
+  html+=`<button class="page-btn" ${CURRENT_PAGE===totalPages?"disabled":""} onclick="gotoPage(${CURRENT_PAGE+1})">›</button>`;
+  pagination.innerHTML=html;
+}
+function gotoPage(p){CURRENT_PAGE=p;renderPage();}
+function changePageSize(){PAGE_SIZE=parseInt(pageSize.value);CURRENT_PAGE=1;renderPage();}
+
 /* ================= GPT ================= */
 function buildGPT(){
-  gptPrompt.value=DATA.slice(0,10)
-    .map((p,i)=>`${i+1}. ${p.name} | ร้าน:${p.shop} | FOI:${p.foi}`)
-    .join("\n");
+  gptPrompt.value=FILTERED_DATA.slice(0,10)
+    .map((p,i)=>`${i+1}. ${p.name} | ร้าน:${p.shop} | FOI:${p.foi}`).join("\n");
 }
-function sendToGPT(){
-  navigator.clipboard.writeText(gptPrompt.value);
-  window.open("https://chat.openai.com","_blank");
-}
+function sendToGPT(){navigator.clipboard.writeText(gptPrompt.value);window.open("https://chat.openai.com");}
 
 /* ================= CLEAR ================= */
 async function clearData(){
   if(!confirm("ลบข้อมูลทั้งหมด?"))return;
   await fetch(DB_ROOT+IMPORT_PATH,{method:"DELETE"});
-  DATA=[];reloadCategory();
+  DATA=[];reload();
 }
 
 /* ================= INIT ================= */
