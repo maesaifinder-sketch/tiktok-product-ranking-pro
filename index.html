@@ -472,20 +472,6 @@ function render(list){
   >
 </td>
 
-<td>
-  ${p.name}
-  <br>
-  <small>${p.shop}</small>
-</td>
-  <td><span class="badge">${p.category}</span></td>
-  <td class="foi">${p.foi}</td>
-  <td>${p.roi}</td>
-  <td>${p.sell}</td>
-  <td>${p.feed}</td>
-  <td>${p.roi>=70?"💰":"⚠️"}</td>
-</tr>`;
-  });
-}
 
 function render(list){
   tb.innerHTML="";
@@ -528,7 +514,7 @@ function render(list){
   ${
     p.affiliate_url
       ? `<a href="${p.affiliate_url}" target="_blank">🔗 Link</a>`
-      : `<button onclick="genLink(${key})">🧠 หา Link</button>`
+      : `<button onclick="genLink(${key})">🧠Link</button>`
   }
 </td>
 
@@ -596,7 +582,7 @@ function buildGPT(){
     : FILTERED_DATA.slice(0,10);
 
   gptPrompt.value = list.map((p,i)=>
-    `${i+1}. ${p.name} | หมวด:${p.category} | ร้าน:${p.shop} | FOI:${p.foi}`
+    `${i+1}. ${p.name} | คลิก:${p.shop} | FOI:${p.foi}`
   ).join("\n");
 }
 function sendToGPT(){
