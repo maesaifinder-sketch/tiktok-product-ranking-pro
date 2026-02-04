@@ -29,22 +29,7 @@ button,input,select,textarea{
 button{background:#020617;color:#fff;cursor:pointer}
 button.secondary{background:#475569}
 button.danger{background:#dc2626}
-textarea{width:100%;min-height:140px}
 small{color:#64748b}
-hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
-
-/* CATEGORY */
-.cat-scroll{max-height:260px;overflow-y:auto;padding-right:6px}
-.cat-item{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:8px;
-  cursor:grab;
-}
-.cat-item:hover{background:#f8fafc}
-.cat-left{cursor:pointer}
-.cat-count{margin-left:6px;font-size:12px;color:#475569}
 
 /* Pagination */
 .pagination{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -54,7 +39,6 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   cursor:pointer;font-weight:600
 }
 .page-btn.active{background:#020617;color:#fff}
-.page-btn:disabled{opacity:.4;cursor:not-allowed}
 </style>
 </head>
 
@@ -62,7 +46,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
 <header>
   <h1>🚀 Index PRO+ – Feed Opportunity Index</h1>
-  <small>Kalodata-style | Affiliate Intelligence | No API</small>
+  <small>SaaS-style | TikTok Affiliate Intelligence</small>
 </header>
 
 <div class="container">
@@ -79,27 +63,12 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <div class="card">
   <input id="search" placeholder="ค้นหาสินค้า">
   <select id="catFilter"></select>
+  <select id="pageSize" onchange="changePageSize()">
+    <option value="20">20 / หน้า</option>
+    <option value="50">50 / หน้า</option>
+    <option value="100">100 / หน้า</option>
+  </select>
   <button onclick="apply()">Filter</button>
-</div>
-
-<br>
-
-<!-- TOGGLE CATEGORY -->
-<div class="card">
-  <button class="secondary" onclick="toggleCategory()" id="toggleBtn">➕ แสดงการจัดการหมวดหมู่</button>
-</div>
-
-<br>
-
-<!-- CATEGORY MANAGER (HIDDEN DEFAULT) -->
-<div class="card" id="categoryBox" style="display:none">
-  <h3>🗂 จัดการหมวดหมู่ (ลากเพื่อจัดลำดับ)</h3>
-  <input id="catName" placeholder="ชื่อหมวด">
-  <input id="catRegex" placeholder="Keyword / Regex">
-  <button onclick="addCategory()">➕ เพิ่มหมวด</button>
-  <small id="regexPreview"></small>
-  <hr>
-  <div id="catList" class="cat-scroll"></div>
 </div>
 
 <br>
@@ -115,8 +84,9 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <tbody id="tb"></tbody>
 </table>
 
-<div style="margin-top:12px">
+<div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
   <div class="pagination" id="pagination"></div>
+  <small id="pageInfo"></small>
 </div>
 </div>
 
@@ -125,43 +95,17 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <script>
 const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
-const CAT_KEY="INDEX_PRO_CATEGORIES";
 
 let DATA=[],FILTERED_DATA=[];
 let CURRENT_PAGE=1,PAGE_SIZE=20;
-let drag=null;
 
-let CATEGORIES=JSON.parse(localStorage.getItem(CAT_KEY))||[
-  {name:"Topper",regex:"topper|ท็อปเปอร์"},
-  {name:"ผ้าปูที่นอน",regex:"ผ้าปู"},
-  {name:"หมอน",regex:"หมอน"},
-  {name:"ผ้าห่ม",regex:"ผ้าห่ม"},
-];
-
+/* SCORE */
 const sellScore=p=>Math.round((p.avgViews||0)/1000);
 const feedScore=p=>Math.round((p.engagement||0)*30);
 const FOI=p=>Math.min(100,Math.round(sellScore(p)*0.4+feedScore(p)*0.6));
 const roiScore=p=>Math.round(p.foi*0.7);
 
-/* TOGGLE CATEGORY */
-function toggleCategory(){
-  const box=document.getElementById("categoryBox");
-  const btn=document.getElementById("toggleBtn");
-  if(box.style.display==="none"){
-    box.style.display="block";
-    btn.innerText="➖ ซ่อนการจัดการหมวดหมู่";
-  }else{
-    box.style.display="none";
-    btn.innerText="➕ แสดงการจัดการหมวดหมู่";
-  }
-}
-
-function recalcCategory(){
-  DATA.forEach(p=>{
-    p.category=CATEGORIES.find(c=>new RegExp(c.regex,"i").test(p.name))?.name||"อื่นๆ";
-  });
-}
-
+/* LOAD */
 async function load(){
   const r=await fetch(DB_ROOT+IMPORT_PATH);
   const j=await r.json(); if(!j)return;
@@ -169,23 +113,19 @@ async function load(){
   Object.values(j).forEach(b=>{
     (b.items||[]).forEach(p=>{
       p.shop=p.shop||"-";
-      p.sell=sellScore(p);p.feed=feedScore(p);
-      p.foi=FOI(p);p.roi=roiScore(p);
+      p.sell=sellScore(p);
+      p.feed=feedScore(p);
+      p.foi=FOI(p);
+      p.roi=roiScore(p);
+      p.category=p.category||"อื่นๆ";
       DATA.push(p);
     });
   });
-  recalcCategory();
-  reload();
+  buildCatFilter();
+  apply();
 }
 
-function reload(){
-  dashboard();
-  FILTERED_DATA=[...DATA];
-  CURRENT_PAGE=1;
-  renderCatManager();
-  renderPage();
-}
-
+/* DASHBOARD */
 function dashboard(){
   total.innerText=DATA.length;
   easy.innerText=DATA.filter(p=>p.foi>=75).length;
@@ -194,27 +134,32 @@ function dashboard(){
   topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
 }
 
-function apply(cat){
-  const q=search.value?.toLowerCase()||"";
+/* FILTER */
+function apply(){
+  const q=search.value.toLowerCase();
+  const cat=catFilter.value;
   FILTERED_DATA=DATA.filter(p=>
     (!q||p.name.toLowerCase().includes(q)) &&
     (!cat||p.category===cat)
   );
   CURRENT_PAGE=1;
-  renderPage();
+  dashboard();
+  render();
 }
 
-function renderPage(){
+/* TABLE */
+function render(){
   const start=(CURRENT_PAGE-1)*PAGE_SIZE;
   tb.innerHTML="";
-  FILTERED_DATA.slice(start,start+PAGE_SIZE)
+  FILTERED_DATA
     .sort((a,b)=>b.foi-a.foi)
+    .slice(start,start+PAGE_SIZE)
     .forEach((p,i)=>{
       tb.innerHTML+=`
 <tr class="${p.category==='อื่นๆ'?'unmatched':''}">
 <td>#${start+i+1}</td>
 <td>${p.name}<br><small>${p.shop}</small></td>
-<td><span class="badge ${p.category==='อื่นๆ'?'warn':''}">${p.category}</span></td>
+<td><span class="badge">${p.category}</span></td>
 <td class="foi">${p.foi}</td>
 <td>${p.roi}</td>
 <td>${p.sell}</td>
@@ -222,62 +167,39 @@ function renderPage(){
 <td>${p.roi>=70?"💰":"⚠️"}</td>
 </tr>`;
     });
+  renderPagination();
 }
 
-function renderCatManager(){
-  catList.innerHTML="";
-  CATEGORIES.forEach((c,i)=>{
-    const count=DATA.filter(p=>p.category===c.name).length;
-    catList.innerHTML+=`
-<div class="cat-item" draggable="true"
- ondragstart="drag=${i}"
- ondragover="event.preventDefault()"
- ondrop="moveCat(${i})">
-  <div class="cat-left" onclick="apply('${c.name}')">
-    <b>${c.name}</b>
-    <span class="cat-count">(${count})</span><br>
-    <small>${c.regex}</small>
-  </div>
-  <button class="danger" onclick="confirmRemove(${i})">ลบ</button>
-</div>`;
+/* PAGINATION */
+function renderPagination(){
+  const totalPage=Math.ceil(FILTERED_DATA.length/PAGE_SIZE);
+  pagination.innerHTML="";
+  for(let i=1;i<=totalPage;i++){
+    if(i>5 && i<CURRENT_PAGE-2) continue;
+    if(i<totalPage-4 && i>CURRENT_PAGE+2) continue;
+    const b=document.createElement("button");
+    b.className="page-btn"+(i===CURRENT_PAGE?" active":"");
+    b.innerText=i;
+    b.onclick=()=>{CURRENT_PAGE=i;render()};
+    pagination.appendChild(b);
+  }
+  pageInfo.innerText=`หน้า ${CURRENT_PAGE} / ${totalPage}`;
+}
+
+function changePageSize(){
+  PAGE_SIZE=parseInt(pageSize.value);
+  CURRENT_PAGE=1;
+  render();
+}
+
+/* CATEGORY FILTER */
+function buildCatFilter(){
+  const cats=[...new Set(DATA.map(p=>p.category))];
+  catFilter.innerHTML=`<option value="">ทุกหมวด</option>`;
+  cats.forEach(c=>{
+    catFilter.innerHTML+=`<option value="${c}">${c}</option>`;
   });
 }
-
-function confirmRemove(i){
-  if(confirm(`ต้องการลบหมวด "${CATEGORIES[i].name}" ใช่หรือไม่?`)){
-    CATEGORIES.splice(i,1);
-    saveCat();
-  }
-}
-
-function addCategory(){
-  if(!catName.value||!catRegex.value)return;
-  CATEGORIES.unshift({name:catName.value,regex:catRegex.value});
-  saveCat();
-  catName.value=catRegex.value="";
-}
-
-function moveCat(to){
-  const item=CATEGORIES.splice(drag,1)[0];
-  CATEGORIES.splice(to,0,item);
-  saveCat();
-}
-
-function saveCat(){
-  localStorage.setItem(CAT_KEY,JSON.stringify(CATEGORIES));
-  recalcCategory();
-  reload();
-}
-
-catRegex.oninput=()=>{
-  try{
-    const r=new RegExp(catRegex.value,"i");
-    const m=DATA.filter(p=>r.test(p.name)).length;
-    regexPreview.innerText=`จับได้ ${m} สินค้า`;
-  }catch{
-    regexPreview.innerText="Regex ไม่ถูกต้อง";
-  }
-};
 
 load();
 </script>
