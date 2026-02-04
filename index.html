@@ -172,14 +172,15 @@ function saveSelected(){
 /* ================= CATEGORY ================= */
 const CAT_PATH = "/categories.json";
 
-const CAT_KEY="INDEX_PRO_CATEGORIES";
 let CATEGORIES = [];
 let DATA=[];
 
 async function loadCategories(){
   const r = await fetch(DB_ROOT + CAT_PATH);
   const j = await r.json();
-  CATEGORIES = j ? Object.values(j) : [];
+  CATEGORIES = j
+  ? Object.entries(j).map(([id, c]) => ({ id, ...c }))
+  : [];
   renderCatManager();
 }
 
@@ -215,35 +216,19 @@ async function removeCategory(id){
 }
 
 /* ================= CATEGORY CRUD ================= */
-function reassignCategories(){
-  DATA.forEach(p=>{
-    p.category =
-      CATEGORIES.find(c=>new RegExp(c.regex,"i").test(p.name))
-      ?.name || "อื่นๆ";
-  });
-}
-
-function saveCat(){
-  localStorage.setItem(CAT_KEY,JSON.stringify(CATEGORIES));
-  reassignCategories(); // ✅ สำคัญมาก
-  renderCatManager();
-  reload();
-}
-function addCategory(){
-  if(!catName.value||!catRegex.value)return;
-  CATEGORIES.unshift({name:catName.value,regex:catRegex.value});
-  catName.value=catRegex.value="";
-  saveCat();
-}
-function removeCategory(i){CATEGORIES.splice(i,1);saveCat();}
 
 function renderCatManager(){
   catList.innerHTML="";
-  Object.entries(CATEGORIES).forEach(([id,c])=>{
+  CATEGORIES.forEach(c=>{
     catList.innerHTML+=`
       <div class="cat-item">
-        <div><b>${c.name}</b><br><small>${c.regex}</small></div>
-        <button class="danger" onclick="removeCategory('${id}','${c.name}')">ลบ</button>
+        <div>
+          <b>${c.name}</b><br>
+          <small>${c.regex}</small>
+        </div>
+        <button class="danger" onclick="removeCategory('${c.id}')">
+          ลบ
+        </button>
       </div>`;
   });
 }
@@ -431,8 +416,12 @@ async function clearData(){
 }
 
 /* ================= INIT ================= */
-loadCategories();
-load();
+async function init(){
+  await loadCategories(); // โหลดหมวดก่อน
+  await load();           // แล้วค่อยโหลดสินค้า
+}
+
+init();
 </script>
 
 </body>
