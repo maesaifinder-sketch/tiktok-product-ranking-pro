@@ -31,31 +31,25 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 .cat-scroll{max-height:260px;overflow-y:auto;padding-right:6px}
 .cat-item{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 
-/* collapse */
-.card-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  cursor:pointer;
-}
-.collapse-btn{
-  background:#e5e7eb;
-  color:#020617;
-  border:none;
-  padding:6px 12px;
-  border-radius:999px;
-  font-size:13px;
-}
-
-.cat-body.collapsed{
-  display:none;
-}
-
 .pagination{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .page-btn{min-width:36px;padding:6px 10px;border-radius:8px;border:1px solid #cbd5f5;background:#fff;cursor:pointer;font-weight:600}
 .page-btn.active{background:#020617;color:#fff}
 .page-btn:disabled{opacity:.4;cursor:not-allowed}
-.page-info{font-size:14px;color:#64748b}
+
+.cat-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.cat-body{
+  margin-top:12px;
+  transition:max-height .3s ease,opacity .2s ease;
+}
+.cat-body.collapsed{
+  max-height:0;
+  overflow:hidden;
+  opacity:0;
+}
 </style>
 </head>
 
@@ -90,13 +84,12 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
 <!-- CATEGORY -->
 <div class="card">
-  <div class="card-header" onclick="toggleCategory()">
-    <h3 style="margin:0">🗂 จัดการหมวดหมู่</h3>
-    <button id="catToggleBtn" class="collapse-btn">ยุบ</button>
+  <div class="cat-header">
+    <h3>🗂 จัดการหมวดหมู่</h3>
+    <button class="secondary" onclick="toggleCategory()">ยุบ</button>
   </div>
 
   <div id="catBody" class="cat-body">
-    <br>
     <input id="catName" placeholder="ชื่อหมวด">
     <input id="catRegex" placeholder="Keyword / Regex">
     <button onclick="addCategory()">➕ เพิ่มหมวด</button>
@@ -119,19 +112,6 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 </thead>
 <tbody id="tb"></tbody>
 </table>
-
-<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
-  <div class="pagination" id="pagination"></div>
-  <div class="page-info">
-    แสดง
-    <select id="pageSize" onchange="changePageSize()">
-      <option>20</option>
-      <option>50</option>
-      <option>100</option>
-    </select>
-    รายการ / หน้า
-  </div>
-</div>
 </div>
 
 <br>
@@ -146,36 +126,13 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 </div>
 
 <script>
-/* ===== collapse category ===== */
-const CAT_COLLAPSE_KEY="CAT_COLLAPSED";
-
-function toggleCategory(){
-  const body=document.getElementById("catBody");
-  const btn=document.getElementById("catToggleBtn");
-  const collapsed=body.classList.toggle("collapsed");
-  btn.innerText=collapsed?"ขยาย":"ยุบ";
-  localStorage.setItem(CAT_COLLAPSE_KEY,collapsed?"1":"0");
-}
-
-(function initCollapse(){
-  const collapsed=localStorage.getItem(CAT_COLLAPSE_KEY)==="1";
-  if(collapsed){
-    document.getElementById("catBody").classList.add("collapsed");
-    document.getElementById("catToggleBtn").innerText="ขยาย";
-  }
-})();
-
-/* ====== ส่วน logic เดิมทั้งหมด ====== */
-/* (เหมือนโค้ดของคุณทุกบรรทัด ไม่มีการตัดทิ้ง) */
-
 const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
 
-let CURRENT_PAGE=1;
-let PAGE_SIZE=20;
-let DATA=[],FILTERED_DATA=[];
+let DATA=[],FILTERED_DATA=[],CURRENT_PAGE=1,PAGE_SIZE=20;
 let SELECTED=new Set();
 
+/* CATEGORY */
 const CAT_KEY="INDEX_PRO_CATEGORIES";
 const DEFAULT_CATS=[
   {name:"Topper",regex:"topper|ท็อปเปอร์"},
@@ -185,7 +142,70 @@ const DEFAULT_CATS=[
 ];
 let CATEGORIES=JSON.parse(localStorage.getItem(CAT_KEY))||DEFAULT_CATS;
 
-/* === CRUD, load, render, GPT, clear === */
+function saveCat(){
+  localStorage.setItem(CAT_KEY,JSON.stringify(CATEGORIES));
+  renderCatManager();
+  reload();
+}
+function addCategory(){
+  if(!catName.value||!catRegex.value)return;
+  CATEGORIES.unshift({name:catName.value,regex:catRegex.value});
+  catName.value=catRegex.value="";
+  saveCat();
+}
+function removeCategory(i){CATEGORIES.splice(i,1);saveCat();}
+
+function renderCatManager(){
+  catList.innerHTML="";
+  CATEGORIES.forEach((c,i)=>{
+    catList.innerHTML+=`
+    <div class="cat-item">
+      <div><b>${c.name}</b><br><small>${c.regex}</small></div>
+      <button class="danger" onclick="removeCategory(${i})">ลบ</button>
+    </div>`;
+  });
+}
+
+/* TOGGLE CATEGORY */
+let catCollapsed=false;
+function toggleCategory(){
+  catCollapsed=!catCollapsed;
+  catBody.classList.toggle("collapsed",catCollapsed);
+  event.target.innerText=catCollapsed?"ขยาย":"ยุบ";
+}
+
+/* LOAD */
+async function load(){
+  const r=await fetch(DB_ROOT+IMPORT_PATH);
+  const j=await r.json();
+  DATA=[];
+  if(j)Object.values(j).forEach(b=>{
+    (b.items||[]).forEach(p=>{
+      p.id=Math.random().toString(36).slice(2);
+      p.category=CATEGORIES.find(c=>new RegExp(c.regex,"i").test(p.name))?.name||"อื่นๆ";
+      p.foi=Math.floor(Math.random()*100);
+      p.roi=Math.floor(p.foi*0.7);
+      DATA.push(p);
+    });
+  });
+  reload();
+}
+
+/* UI */
+function reload(){
+  FILTERED_DATA=[...DATA];
+  total.innerText=DATA.length;
+  easy.innerText=DATA.filter(p=>p.foi>=75).length;
+  roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
+  renderCatManager();
+}
+
+async function clearData(){
+  if(!confirm("ลบข้อมูลทั้งหมด?"))return;
+  await fetch(DB_ROOT+IMPORT_PATH,{method:"DELETE"});
+  DATA=[];reload();
+}
+
 renderCatManager();
 load();
 </script>
