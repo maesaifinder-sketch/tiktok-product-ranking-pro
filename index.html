@@ -243,7 +243,7 @@ function renderCatManager(){
     catList.innerHTML+=`
       <div class="cat-item">
         <div><b>${c.name}</b><br><small>${c.regex}</small></div>
-        <button class="danger" onclick="removeCategory('${id}')">ลบ</button>
+        <button class="danger" onclick="removeCategory('${id}','${c.name}')">ลบ</button>
       </div>`;
   });
 }
