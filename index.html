@@ -19,7 +19,10 @@ th{background:#f8fafc}
 .foi{font-size:22px;font-weight:900}
 
 button,input,select,textarea{
-  padding:10px;border-radius:10px;border:1px solid #cbd5f5;font-family:inherit
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #cbd5f5;
+  font-family:inherit
 }
 button{background:#020617;color:#fff;cursor:pointer}
 button.secondary{background:#475569}
@@ -28,7 +31,7 @@ textarea{width:100%;min-height:160px}
 small{color:#64748b}
 hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
-/* CATEGORY SCROLL */
+/* CATEGORY */
 .cat-scroll{max-height:260px;overflow-y:auto;padding-right:6px}
 .cat-item{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 
@@ -45,6 +48,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   border-radius:8px;
   border:1px solid #cbd5f5;
   background:#fff;
+  color:#020617; /* 🔥 FIX จุดสำคัญ */
   cursor:pointer;
   font-weight:600;
 }
@@ -257,7 +261,7 @@ function render(list){
   });
 }
 
-/* ================= PAGINATION UI ================= */
+/* ================= PAGINATION ================= */
 function renderPagination(){
   const totalPages=Math.ceil(FILTERED_DATA.length/PAGE_SIZE);
   if(totalPages<=1){pagination.innerHTML="";return;}
