@@ -171,7 +171,20 @@ let CATEGORIES=JSON.parse(localStorage.getItem(CAT_KEY))||DEFAULT_CATS;
 let DATA=[];
 
 /* ================= CATEGORY CRUD ================= */
-function saveCat(){localStorage.setItem(CAT_KEY,JSON.stringify(CATEGORIES));renderCatManager();reload();}
+function reassignCategories(){
+  DATA.forEach(p=>{
+    p.category =
+      CATEGORIES.find(c=>new RegExp(c.regex,"i").test(p.name))
+      ?.name || "อื่นๆ";
+  });
+}
+
+function saveCat(){
+  localStorage.setItem(CAT_KEY,JSON.stringify(CATEGORIES));
+  reassignCategories(); // ✅ สำคัญมาก
+  renderCatManager();
+  reload();
+}
 function addCategory(){
   if(!catName.value||!catRegex.value)return;
   CATEGORIES.unshift({name:catName.value,regex:catRegex.value});
@@ -205,11 +218,14 @@ async function load(){
   Object.values(j).forEach(b=>{
     (b.items||[]).forEach(p=>{
       p.shop=p.shop||"-";
-      p.category=CATEGORIES.find(c=>new RegExp(c.regex,"i").test(p.name))?.name||"อื่นๆ";
-      p.sell=sellScore(p);p.feed=feedScore(p);p.foi=FOI(p);p.roi=roiScore(p);
+      p.sell=sellScore(p);
+      p.feed=feedScore(p);
+      p.foi=FOI(p);
+      p.roi=roiScore(p);
       DATA.push(p);
     });
   });
+  reassignCategories(); // ✅ เพิ่มบรรทัดนี้
   reload();
 }
 
