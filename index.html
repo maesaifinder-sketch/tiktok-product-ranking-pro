@@ -48,7 +48,7 @@ async function resolveProductFromImage(p){
 <script>
 async function genLink(key){
   const p = DATA[key];
-  alert("⏳ กำลังถอด QR + คลี่ลิงก์...");
+  alert("⏳ กำลังถอด QR + ลิงก์...");
 
   const link = await resolveProductFromImage(p);
 
@@ -79,6 +79,37 @@ function extractProductId(url){
 </script>
 
 <style>
+    
+    /* ===== TABLE FIX ===== */
+.table-wrap{
+  width:100%;
+  overflow-x:auto;
+}
+
+table{
+  width:100%;
+  table-layout:fixed; /* ⭐ ตัวนี้คือหัวใจ */
+}
+
+th,td{
+  white-space:normal;
+  word-break:break-word;
+  text-align:center;
+}
+
+/* กำหนดความกว้างคอลัมน์ */
+th:nth-child(1), td:nth-child(1){width:60px}   /* เลือก */
+th:nth-child(2), td:nth-child(2){width:60px}   /* # */
+th:nth-child(3), td:nth-child(3){width:70px}   /* รูป */
+th:nth-child(4), td:nth-child(4){width:300px}  /* สินค้า */
+th:nth-child(5), td:nth-child(5){width:100px}  /* หมวด */
+th:nth-child(6), td:nth-child(6){width:80px}   /* FOI */
+th:nth-child(7), td:nth-child(7){width:80px}   /* ROI */
+th:nth-child(8), td:nth-child(8){width:80px}   /* Sell */
+th:nth-child(9), td:nth-child(9){width:80px}   /* Feed */
+th:nth-child(10),td:nth-child(10){width:90px}  /* Aff */
+th:nth-child(11),td:nth-child(11){width:80px}  /* สถานะ */
+
 body{margin:0;font-family:system-ui;background:#f1f5f9}
 header{background:#020617;color:#fff;padding:20px}
 .container{max-width:1500px;margin:auto;padding:20px}
@@ -100,6 +131,20 @@ button.danger{background:#dc2626}
 textarea{width:100%;min-height:160px}
 small{color:#64748b}
 hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
+
+td a, td button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  white-space:nowrap;
+  font-size:13px;
+}
+
+td button{
+  padding:6px 10px;
+  border-radius:8px;
+}
 
 /* CATEGORY SCROLL */
 .cat-scroll{max-height:260px;overflow-y:auto;padding-right:6px}
@@ -204,6 +249,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
 <!-- TABLE -->
 <div class="card">
+<div class="table-wrap">
 <table>
 <thead>
 <tr>
