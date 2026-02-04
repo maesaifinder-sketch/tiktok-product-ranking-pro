@@ -32,6 +32,22 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 .cat-scroll{max-height:260px;overflow-y:auto;padding-right:6px}
 .cat-item{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 
+.thumb{
+  width:48px;
+  height:48px;
+  object-fit:cover;
+  border-radius:8px;
+  border:1px solid #e5e7eb;
+  cursor:pointer;
+  transition:.15s;
+}
+
+.thumb:hover{
+  transform:scale(2);
+  z-index:10;
+  box-shadow:0 8px 24px rgba(0,0,0,.2);
+}
+
 /* ===== Kalodata Pagination ===== */
 .pagination{
   display:flex;
@@ -118,7 +134,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <table>
 <thead>
 <tr>
-<th>เลือก</th><th>#</th><th>สินค้า</th><th>หมวด</th>
+<th>เลือก</th><th>#</th><th>รูป</th><th>สินค้า</th><th>หมวด</th>
 <th>FOI</th><th>ROI</th><th>Sell</th><th>Feed</th><th>สถานะ</th>
 </tr>
 </thead>
@@ -329,7 +345,60 @@ function render(list){
     >
   </td>
   <td>#${(CURRENT_PAGE-1)*PAGE_SIZE+i+1}</td>
-  <td>${p.name}<br><small>${p.shop}</small></td>
+  <td>
+  <img
+    class="thumb"
+    src="${p.image || 'https://via.placeholder.com/80?text=No+Image'}"
+    onerror="this.src='https://via.placeholder.com/80?text=No+Image'"
+  >
+</td>
+
+<td>
+  ${p.name}
+  <br>
+  <small>${p.shop}</small>
+</td>
+  <td><span class="badge">${p.category}</span></td>
+  <td class="foi">${p.foi}</td>
+  <td>${p.roi}</td>
+  <td>${p.sell}</td>
+  <td>${p.feed}</td>
+  <td>${p.roi>=70?"💰":"⚠️"}</td>
+</tr>`;
+  });
+}
+
+function render(list){
+  tb.innerHTML="";
+
+  list.sort((a,b)=>b.foi-a.foi).forEach((p,i)=>{
+    const key = DATA.indexOf(p);
+    const checked = SELECTED.has(key) ? "checked" : "";
+
+    tb.innerHTML+=`
+<tr>
+  <td>
+    <input type="checkbox"
+      ${checked}
+      onchange="toggleSelect(${key})"
+    >
+  </td>
+
+  <td>#${(CURRENT_PAGE-1)*PAGE_SIZE+i+1}</td>
+
+  <td>
+    <img
+      class="thumb"
+      src="${p.image || 'https://via.placeholder.com/80?text=No+Image'}"
+      onerror="this.src='https://via.placeholder.com/80?text=No+Image'"
+    >
+  </td>
+
+  <td>
+    ${p.name}<br>
+    <small>${p.shop}</small>
+  </td>
+
   <td><span class="badge">${p.category}</span></td>
   <td class="foi">${p.foi}</td>
   <td>${p.roi}</td>
