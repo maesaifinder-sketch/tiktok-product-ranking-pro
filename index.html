@@ -201,7 +201,14 @@ async function addCategory(){
 }
 
 async function removeCategory(id){
-  await fetch(DB_ROOT + "/categories/" + id + ".json",{method:"DELETE"});
+  if(!confirm("⚠️ ต้องการลบหมวดหมู่นี้จริงหรือไม่?\nสินค้าที่อยู่ในหมวดนี้จะถูกจัดใหม่เป็น 'อื่นๆ'")){
+    return;
+  }
+
+  await fetch(DB_ROOT + "/categories/" + id + ".json", {
+    method: "DELETE"
+  });
+
   await loadCategories();
   reassignCategories();
   saveProductsCategory();
