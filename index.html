@@ -5,6 +5,45 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Index PRO+ – TikTok Feed Intelligence</title>
 
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+<script>
+async function decodeQRFromImage(imgUrl){
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = imgUrl;
+
+  await new Promise(r=>img.onload=r);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img,0,0);
+
+  const imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const qr = jsQR(imageData.data, imageData.width, imageData.height);
+
+  return qr?.data || "";
+}
+</script>
+
+<script>
+async function resolveTikTokURL(url){
+  try{
+    const r = await fetch(url, { redirect:"follow" });
+    return r.url || url;
+  }catch(e){
+    return url;
+  }
+}
+
+function extractProductId(url){
+  const m = url.match(/product\/(\d+)/);
+  return m ? m[1] : "";
+}
+</script>
+
 <style>
 body{margin:0;font-family:system-ui;background:#f1f5f9}
 header{background:#020617;color:#fff;padding:20px}
@@ -134,8 +173,8 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <table>
 <thead>
 <tr>
-<th>เลือก</th><th>#</th><th>รูป</th><th>สินค้า</th><th>Affiliate</th><th>หมวด</th>
-<th>FOI</th><th>ROI</th><th>Sell</th><th>Feed</th><th>สถานะ</th>
+<th>เลือก</th><th>#</th><th>รูป</th><th>สินค้า</th><th>หมวด</th>
+<th>FOI</th><th>ROI</th><th>Sell</th><th>Feed</th><th>Aff</th><th>สถานะ</th>
 </tr>
 </thead>
 <tbody id="tb"></tbody>
@@ -398,20 +437,21 @@ function render(list){
     ${p.name}<br>
     <small>${p.shop}</small>
   </td>
-   
-  <td>
-  <a href="${p.affiliate_url || '#'}"
-     target="_blank"
-     style="text-decoration:none;font-weight:700">
-     🔗 Affiliate
-  </a>
-</td>
 
   <td><span class="badge">${p.category}</span></td>
   <td class="foi">${p.foi}</td>
   <td>${p.roi}</td>
   <td>${p.sell}</td>
   <td>${p.feed}</td>
+  
+  <td>
+  ${
+    p.affiliate_url
+    ? `<a href="${p.affiliate_url}" target="_blank">🔗 Link</a>`
+    : "-"
+  }
+</td>
+
   <td>${p.roi>=70?"💰":"⚠️"}</td>
 </tr>`;
   });
@@ -422,19 +462,6 @@ function toggleSelect(key){
   else SELECTED.add(key);
   saveSelected();
   buildGPT();
-}
-
-function buildGPT(){
-  const list = SELECTED.size
-    ? [...SELECTED].map(i => DATA[i])
-    : FILTERED_DATA.slice(0,10);
-
-  gptPrompt.value = list.map((p,i)=>
-`${i+1}. ${p.name}
-ร้าน: ${p.shop}
-FOI: ${p.foi}
-ลิงก์ขาย: ${p.affiliate_url}`
-  ).join("\n\n");
 }
 
 /* ================= PAGINATION UI ================= */
