@@ -170,15 +170,42 @@ function saveSelected(){
 }
 
 /* ================= CATEGORY ================= */
+const CAT_PATH = "/categories.json";
+
 const CAT_KEY="INDEX_PRO_CATEGORIES";
-const DEFAULT_CATS=[
-  {name:"Topper",regex:"topper|ท็อปเปอร์"},
-  {name:"ผ้าปูที่นอน",regex:"ผ้าปู"},
-  {name:"หมอน",regex:"หมอน"},
-  {name:"ผ้าห่ม",regex:"ผ้าห่ม"},
-];
-let CATEGORIES=JSON.parse(localStorage.getItem(CAT_KEY))||DEFAULT_CATS;
+let CATEGORIES = [];
 let DATA=[];
+
+async function loadCategories(){
+  const r = await fetch(DB_ROOT + CAT_PATH);
+  const j = await r.json();
+  CATEGORIES = j ? Object.values(j) : [];
+  renderCatManager();
+}
+
+async function addCategory(){
+  if(!catName.value || !catRegex.value) return;
+
+  await fetch(DB_ROOT + "/categories.json",{
+    method:"POST",
+    body: JSON.stringify({
+      name: catName.value,
+      regex: catRegex.value
+    })
+  });
+
+  catName.value = catRegex.value = "";
+  await loadCategories();
+  reassignCategories();
+  saveProductsCategory();
+}
+
+async function removeCategory(id){
+  await fetch(DB_ROOT + "/categories/" + id + ".json",{method:"DELETE"});
+  await loadCategories();
+  reassignCategories();
+  saveProductsCategory();
+}
 
 /* ================= CATEGORY CRUD ================= */
 function reassignCategories(){
@@ -202,15 +229,37 @@ function addCategory(){
   saveCat();
 }
 function removeCategory(i){CATEGORIES.splice(i,1);saveCat();}
+
 function renderCatManager(){
   catList.innerHTML="";
-  CATEGORIES.forEach((c,i)=>{
+  Object.entries(CATEGORIES).forEach(([id,c])=>{
     catList.innerHTML+=`
       <div class="cat-item">
         <div><b>${c.name}</b><br><small>${c.regex}</small></div>
-        <button class="danger" onclick="removeCategory(${i})">ลบ</button>
+        <button class="danger" onclick="removeCategory('${id}')">ลบ</button>
       </div>`;
   });
+}
+
+function reassignCategories(){
+  DATA.forEach(p=>{
+    p.category =
+      Object.values(CATEGORIES).find(c =>
+        new RegExp(c.regex,"i").test(p.name)
+      )?.name || "อื่นๆ";
+  });
+}
+
+async function saveProductsCategory(){
+  for(const batch of Object.entries(DATA_BY_BATCH)){
+    const [batchId, batchData] = batch;
+    for(const [i,p] of batchData.items.entries()){
+      await fetch(
+        `${DB_ROOT}/imports/${batchId}/items/${i}/category.json`,
+        { method:"PUT", body: JSON.stringify(p.category) }
+      );
+    }
+  }
 }
 
 /* ================= SCORE ================= */
@@ -375,7 +424,7 @@ async function clearData(){
 }
 
 /* ================= INIT ================= */
-renderCatManager();
+loadCategories();
 load();
 </script>
 
