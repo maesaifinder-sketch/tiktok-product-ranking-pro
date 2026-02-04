@@ -47,6 +47,12 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   background:#fff;
   cursor:pointer;
   font-weight:600;
+  color:#020617; /* 👈 เพิ่มบรรทัดนี้ */
+}
+
+.page-btn.active{
+  background:#020617;
+  color:#fff; /* 👈 ระบุชัด */
 }
 .page-btn.active{
   background:#020617;
@@ -138,7 +144,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <div class="card">
   <h3>🧠 Send to GPT</h3>
   <textarea id="gptPrompt"></textarea>
-  <button onclick="sendToGPT()">📤 Copy & Open ChatGPT</button>
+  <button onclick="sendToGPT()">📤 Copy Text</button>
 </div>
 
 </div>
@@ -280,7 +286,11 @@ function buildGPT(){
   gptPrompt.value=FILTERED_DATA.slice(0,10)
     .map((p,i)=>`${i+1}. ${p.name} | ร้าน:${p.shop} | FOI:${p.foi}`).join("\n");
 }
-function sendToGPT(){navigator.clipboard.writeText(gptPrompt.value);window.open("https://chat.openai.com");}
+function sendToGPT(){
+  navigator.clipboard.writeText(gptPrompt.value)
+    .then(()=>alert("📋 คัดลอก Prompt แล้ว"))
+    .catch(()=>alert("❌ ไม่สามารถคัดลอกได้"));
+}
 
 /* ================= CLEAR ================= */
 async function clearData(){
