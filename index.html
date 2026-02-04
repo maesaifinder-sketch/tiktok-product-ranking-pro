@@ -28,6 +28,21 @@ async function decodeQRFromImage(imgUrl){
 }
 </script>
 
+async function genLink(key){
+  const p = DATA[key];
+  alert("⏳ กำลังถอด QR + คลี่ลิงก์...");
+
+  const link = await resolveProductFromImage(p);
+
+  if(link){
+    p.affiliate_url = link;
+    alert("✅ เจอ Product Link แล้ว");
+    renderPage();
+  }else{
+    alert("❌ ไม่พบ QR หรือไม่ใช่ลิงก์สินค้า");
+  }
+}
+
 <script>
 async function resolveTikTokURL(url){
   try{
@@ -447,8 +462,8 @@ function render(list){
   <td>
   ${
     p.affiliate_url
-    ? `<a href="${p.affiliate_url}" target="_blank">🔗 Link</a>`
-    : "-"
+      ? `<a href="${p.affiliate_url}" target="_blank">🔗 Link</a>`
+      : `<button onclick="genLink(${key})">🧠 หา Link</button>`
   }
 </td>
 
