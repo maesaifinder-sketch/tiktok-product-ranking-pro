@@ -134,7 +134,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <table>
 <thead>
 <tr>
-<th>เลือก</th><th>#</th><th>รูป</th><th>สินค้า</th><th>หมวด</th>
+<th>เลือก</th><th>#</th><th>รูป</th><th>สินค้า</th><th>Affiliate</th><th>หมวด</th>
 <th>FOI</th><th>ROI</th><th>Sell</th><th>Feed</th><th>สถานะ</th>
 </tr>
 </thead>
@@ -398,6 +398,14 @@ function render(list){
     ${p.name}<br>
     <small>${p.shop}</small>
   </td>
+   
+  <td>
+  <a href="${p.affiliate_url || '#'}"
+     target="_blank"
+     style="text-decoration:none;font-weight:700">
+     🔗 Affiliate
+  </a>
+</td>
 
   <td><span class="badge">${p.category}</span></td>
   <td class="foi">${p.foi}</td>
@@ -414,6 +422,19 @@ function toggleSelect(key){
   else SELECTED.add(key);
   saveSelected();
   buildGPT();
+}
+
+function buildGPT(){
+  const list = SELECTED.size
+    ? [...SELECTED].map(i => DATA[i])
+    : FILTERED_DATA.slice(0,10);
+
+  gptPrompt.value = list.map((p,i)=>
+`${i+1}. ${p.name}
+ร้าน: ${p.shop}
+FOI: ${p.foi}
+ลิงก์ขาย: ${p.affiliate_url}`
+  ).join("\n\n");
 }
 
 /* ================= PAGINATION UI ================= */
