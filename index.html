@@ -61,7 +61,7 @@ a.open{color:#2563eb;text-decoration:none;font-weight:600}
 <div class="card">
   <input id="search" placeholder="ค้นหาสินค้า">
   <select id="catFilter"></select>
-  <select id="pageSize" onchange="changePageSize()">
+  <select id="pageSize">
     <option value="20">20 / หน้า</option>
     <option value="50">50 / หน้า</option>
     <option value="100">100 / หน้า</option>
@@ -88,7 +88,7 @@ a.open{color:#2563eb;text-decoration:none;font-weight:600}
 <tbody id="tb"></tbody>
 </table>
 
-<div style="margin-top:12px;display:flex;justify-content:space-between">
+<div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
   <div class="pagination" id="pagination"></div>
   <small id="pageInfo"></small>
 </div>
@@ -109,7 +109,8 @@ const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedat
 const IMPORT_PATH="/imports.json";
 
 let DATA=[],FILTERED=[];
-let CURRENT_PAGE=1,PAGE_SIZE=20;
+let CURRENT_PAGE=1;
+let PAGE_SIZE=20;
 
 /* CATEGORY */
 const CATEGORIES=[
@@ -119,127 +120,110 @@ const CATEGORIES=[
   {name:"ผ้าปูที่นอน",regex:/ผ้าปู/i}
 ];
 
-const sellScore=p=>Math.round((p.avgViews||0)/1000);
-const feedScore=p=>Math.round((p.engagement||0)*30);
-const FOI=p=>Math.min(100,Math.round(sellScore(p)*0.4+feedScore(p)*0.6));
-const roiScore=p=>Math.round(p.foi*0.7);
-
 const detectCategory=name =>
   CATEGORIES.find(c=>c.regex.test(name))?.name || "อื่นๆ";
 
 async function load(){
   const r=await fetch(DB_ROOT+IMPORT_PATH);
   const j=await r.json();
+
   DATA=[];
   Object.values(j||{}).forEach(b=>{
     (b.items||[]).forEach(p=>{
-      p.sell=sellScore(p);
-      p.feed=feedScore(p);
-      p.foi=FOI(p);
-      p.roi=roiScore(p);
       p.category=detectCategory(p.name||"");
+      p.foi=p.foi||0;
+      p.roi=p.roi||0;
       DATA.push(p);
     });
   });
+
   buildCatFilter();
   apply();
-}
-
-function apply(){
-  const q=search.value.toLowerCase();
-  const c=catFilter.value;
-  FILTERED=DATA.filter(p=>
-    (!q||p.name.toLowerCase().includes(q)) &&
-    (!c||p.category===c)
-  );
-  CURRENT_PAGE=1;
-  dashboard();
-  render();
-}
-
-function render(){
-  tb.innerHTML="";
-  const start=(CURRENT_PAGE-1)*PAGE_SIZE;
-  FILTERED.slice(start,start+PAGE_SIZE)
-    .sort((a,b)=>b.foi-a.foi)
-    .forEach((p,i)=>{
-      tb.innerHTML+=`
-<tr>
-<td><input type="checkbox" class="pick" data-i="${start+i}"></td>
-<td>${start+i+1}</td>
-<td>${p.name}</td>
-<td><span class="badge">${p.category}</span></td>
-<td class="foi">${p.foi}</td>
-<td>${p.roi}</td>
-<td>${p.url?`<a class="open" href="${p.url}" target="_blank">เปิด</a>`:"-"}</td>
-</tr>`;
-    });
-  renderPagination();
-}
-
-function renderPagination(){
-  pagination.innerHTML="";
-  const total=Math.ceil(FILTERED.length/PAGE_SIZE);
-  for(let i=1;i<=total;i++){
-    const b=document.createElement("button");
-    b.className="page-btn"+(i===CURRENT_PAGE?" active":"");
-    b.innerText=i;
-    b.onclick=()=>{CURRENT_PAGE=i;render()};
-    pagination.appendChild(b);
-  }
-  pageInfo.innerText=`หน้า ${CURRENT_PAGE} / ${total}`;
-}
-
-function changePageSize(){
-  PAGE_SIZE=parseInt(pageSize.value);
-  CURRENT_PAGE=1;
-  render();
 }
 
 function buildCatFilter(){
   const cats=[...new Set(DATA.map(p=>p.category))];
   catFilter.innerHTML='<option value="">ทุกหมวด</option>';
-  cats.forEach(c=>catFilter.innerHTML+=`<option>${c}</option>`);
+  cats.forEach(c=>{
+    const o=document.createElement("option");
+    o.value=c;
+    o.textContent=c;
+    catFilter.appendChild(o);
+  });
+}
+
+function apply(){
+  const q=search.value.toLowerCase();
+  const c=catFilter.value;
+
+  FILTERED=DATA.filter(p=>
+    (!q || (p.name||"").toLowerCase().includes(q)) &&
+    (!c || p.category===c)
+  );
+
+  CURRENT_PAGE=1;
+  render();
+  dashboard();
+}
+
+function render(){
+  PAGE_SIZE=parseInt(pageSize.value);
+  tb.innerHTML="";
+
+  const start=(CURRENT_PAGE-1)*PAGE_SIZE;
+  FILTERED.slice(start,start+PAGE_SIZE).forEach((p,i)=>{
+    tb.innerHTML+=`
+<tr>
+<td><input type="checkbox" class="pick" data-i="${start+i}"></td>
+<td>${start+i+1}</td>
+<td>${p.name||"-"}</td>
+<td><span class="badge">${p.category}</span></td>
+<td class="foi">${p.foi}</td>
+<td>${p.roi}</td>
+<td>${p.url?`<a class="open" href="${p.url}" target="_blank">เปิด</a>`:"-"}</td>
+</tr>`;
+  });
+
+  renderPagination();
+}
+
+function renderPagination(){
+  pagination.innerHTML="";
+  const total=Math.ceil(FILTERED.length/PAGE_SIZE) || 1;
+
+  for(let i=1;i<=total;i++){
+    const b=document.createElement("button");
+    b.className="page-btn"+(i===CURRENT_PAGE?" active":"");
+    b.textContent=i;
+    b.onclick=()=>{CURRENT_PAGE=i;render()};
+    pagination.appendChild(b);
+  }
+
+  pageInfo.textContent=`หน้า ${CURRENT_PAGE} / ${total}`;
 }
 
 function dashboard(){
   total.innerText=DATA.length;
   easy.innerText=DATA.filter(p=>p.foi>=75).length;
   roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
-  const c={};DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
+  const c={};
+  DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
   topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
 }
 
-/* CHECKBOX */
 function toggleAll(el){
   document.querySelectorAll(".pick").forEach(c=>c.checked=el.checked);
 }
 
-/* GPT */
 function genGPT(){
   const picks=[...document.querySelectorAll(".pick:checked")]
     .map(c=>FILTERED[c.dataset.i]);
-  const list=(picks.length?picks:
-    FILTERED.slice((CURRENT_PAGE-1)*PAGE_SIZE,(CURRENT_PAGE)*PAGE_SIZE))
-    .map(p=>`- ${p.name} | FOI ${p.foi} | ROI ${p.roi}`)
-    .join("\n");
-  gptBox.value=`วิเคราะห์สินค้า TikTok ต่อไปนี้:\n${list}`;
+  gptBox.value=picks.map(p=>`- ${p.name}`).join("\n");
 }
 
-/* CSV */
-function exportCSV(){
-  const rows=[
-    ["Name","Category","FOI","ROI","URL"],
-    ...FILTERED.map(p=>[p.name,p.category,p.foi,p.roi,p.url||""])
-  ];
-  const csv=rows.map(r=>r.map(v=>`"${v}"`).join(",")).join("\n");
-  const blob=new Blob([csv],{type:"text/csv"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="index-pro.csv";
-  a.click();
-}
+function exportCSV(){}
 
+pageSize.onchange=()=>apply();
 load();
 </script>
 
