@@ -28,6 +28,24 @@ async function decodeQRFromImage(imgUrl){
 }
 </script>
 
+<script>
+async function resolveProductFromImage(p){
+  if(!p.image) return null;
+
+  const qrUrl = await decodeQRFromImage(p.image);
+  if(!qrUrl) return null;
+
+  const realUrl = await resolveTikTokURL(qrUrl);
+  const pid = extractProductId(realUrl);
+
+  if(pid){
+    return `https://www.tiktok.com/view/product/${pid}`;
+  }
+  return realUrl;
+}
+</script>
+
+<script>
 async function genLink(key){
   const p = DATA[key];
   alert("⏳ กำลังถอด QR + คลี่ลิงก์...");
@@ -42,6 +60,7 @@ async function genLink(key){
     alert("❌ ไม่พบ QR หรือไม่ใช่ลิงก์สินค้า");
   }
 }
+</script>
 
 <script>
 async function resolveTikTokURL(url){
