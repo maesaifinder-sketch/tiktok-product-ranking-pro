@@ -14,41 +14,41 @@ header{background:#020617;color:#fff;padding:20px}
 .stat{font-size:30px;font-weight:900}
 .badge{padding:4px 10px;border-radius:20px;font-size:12px;background:#e5e7eb}
 table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid #eee;font-size:14px}
+th,td{padding:12px;border-bottom:1px solid #eee}
 th{background:#f8fafc}
-.foi{font-size:18px;font-weight:900}
+.foi{font-size:22px;font-weight:900}
 
 button,input,select,textarea{
-  padding:8px;
-  border-radius:8px;
-  border:1px solid #cbd5f5;
-  font-family:inherit
+  padding:10px;border-radius:10px;border:1px solid #cbd5f5;font-family:inherit
 }
 button{background:#020617;color:#fff;cursor:pointer}
-button.ghost{background:#fff;color:#020617}
+button.secondary{background:#475569}
+button.danger{background:#dc2626}
+button.ghost{background:#e5e7eb;color:#020617}
+textarea{width:100%;min-height:160px}
 small{color:#64748b}
+hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
-.pagination{display:flex;gap:6px;flex-wrap:wrap}
-.page-btn{
-  min-width:34px;padding:6px 10px;border-radius:8px;
-  border:1px solid #cbd5f5;background:#fff;cursor:pointer
-}
+.cat-scroll{max-height:260px;overflow-y:auto}
+.cat-item{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.cat-actions button{margin-left:6px}
+
+.pagination{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.page-btn{min-width:36px;padding:6px 10px;border-radius:8px;border:1px solid #cbd5f5;background:#fff;cursor:pointer}
 .page-btn.active{background:#020617;color:#fff}
-
-textarea{width:100%;min-height:120px}
-a.open{color:#2563eb;text-decoration:none;font-weight:600}
 </style>
 </head>
 
 <body>
 
 <header>
-  <h1>🚀 Index PRO+</h1>
-  <small>TikTok Affiliate Intelligence</small>
+  <h1>🚀 Index PRO+ – Feed Opportunity Index</h1>
+  <small>Kalodata-style | Affiliate Intelligence | No API</small>
 </header>
 
 <div class="container">
 
+<!-- DASHBOARD -->
 <div class="grid">
   <div class="card"><h3>📦 สินค้าทั้งหมด</h3><div class="stat" id="total">0</div></div>
   <div class="card"><h3>🚀 FOI ≥ 75</h3><div class="stat" id="easy">0</div></div>
@@ -58,172 +58,200 @@ a.open{color:#2563eb;text-decoration:none;font-weight:600}
 
 <br>
 
+<!-- FILTER -->
 <div class="card">
   <input id="search" placeholder="ค้นหาสินค้า">
   <select id="catFilter"></select>
-  <select id="pageSize">
-    <option value="20">20 / หน้า</option>
-    <option value="50">50 / หน้า</option>
-    <option value="100">100 / หน้า</option>
-  </select>
   <button onclick="apply()">Filter</button>
-  <button class="ghost" onclick="exportCSV()">Export CSV</button>
 </div>
 
 <br>
 
+<!-- CATEGORY -->
+<div class="card">
+  <h3>🗂 จัดการหมวดหมู่</h3>
+  <input id="catName" placeholder="ชื่อหมวด">
+  <input id="catRegex" placeholder="Keyword / Regex">
+  <button onclick="addCategory()">➕ เพิ่มหมวด</button>
+  <hr>
+  <div id="catList" class="cat-scroll"></div>
+</div>
+
+<br>
+
+<!-- TABLE -->
 <div class="card">
 <table>
 <thead>
 <tr>
-<th><input type="checkbox" onclick="toggleAll(this)"></th>
-<th>#</th>
-<th>สินค้า</th>
-<th>หมวด</th>
-<th>FOI</th>
-<th>ROI</th>
-<th>Link</th>
+<th></th>
+<th>#</th><th>สินค้า</th><th>หมวด</th>
+<th>FOI</th><th>ROI</th><th>Sell</th><th>Feed</th>
 </tr>
 </thead>
 <tbody id="tb"></tbody>
 </table>
-
-<div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
-  <div class="pagination" id="pagination"></div>
-  <small id="pageInfo"></small>
-</div>
 </div>
 
 <br>
 
+<!-- GPT -->
 <div class="card">
-  <h3>🤖 Send to GPT</h3>
-  <textarea id="gptBox" placeholder="เลือก checkbox เพื่อส่งเฉพาะบางสินค้า"></textarea>
-  <button onclick="genGPT()">Generate Prompt</button>
+  <h3>🧠 Send to GPT</h3>
+  <textarea id="gptPrompt"></textarea>
+  <button onclick="sendToGPT()">📤 Copy & Open ChatGPT</button>
 </div>
 
 </div>
 
 <script>
-const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
-const IMPORT_PATH="/imports.json";
+let DATA=[],FILTERED_DATA=[],SELECTED=new Set();
 
-let DATA=[],FILTERED=[];
-let CURRENT_PAGE=1;
-let PAGE_SIZE=20;
-
-/* CATEGORY */
-const CATEGORIES=[
-  {name:"Topper",regex:/topper|ท็อปเปอร์/i},
-  {name:"หมอน",regex:/หมอน/i},
-  {name:"ผ้าห่ม",regex:/ผ้าห่ม/i},
-  {name:"ผ้าปูที่นอน",regex:/ผ้าปู/i}
+/* ===== CATEGORY ===== */
+const CAT_KEY="INDEX_PRO_CATEGORIES";
+let CATEGORIES=JSON.parse(localStorage.getItem(CAT_KEY))||[
+  {name:"Topper",regex:"topper",visible:true},
+  {name:"หมอน",regex:"หมอน|pillow",visible:true}
 ];
 
-const detectCategory=name =>
-  CATEGORIES.find(c=>c.regex.test(name))?.name || "อื่นๆ";
-
-async function load(){
-  const r=await fetch(DB_ROOT+IMPORT_PATH);
-  const j=await r.json();
-
-  DATA=[];
-  Object.values(j||{}).forEach(b=>{
-    (b.items||[]).forEach(p=>{
-      p.category=detectCategory(p.name||"");
-      p.foi=p.foi||0;
-      p.roi=p.roi||0;
-      DATA.push(p);
-    });
-  });
-
-  buildCatFilter();
-  apply();
+function saveCat(){
+  localStorage.setItem(CAT_KEY,JSON.stringify(CATEGORIES));
+  reload();
 }
 
-function buildCatFilter(){
-  const cats=[...new Set(DATA.map(p=>p.category))];
-  catFilter.innerHTML='<option value="">ทุกหมวด</option>';
-  cats.forEach(c=>{
-    const o=document.createElement("option");
-    o.value=c;
-    o.textContent=c;
-    catFilter.appendChild(o);
+function addCategory(){
+  if(!catName.value||!catRegex.value)return;
+  CATEGORIES.unshift({name:catName.value,regex:catRegex.value,visible:true});
+  catName.value=catRegex.value="";
+  saveCat();
+}
+
+function toggleCat(i){
+  CATEGORIES[i].visible=!CATEGORIES[i].visible;
+  saveCat();
+}
+
+function removeCategory(i){
+  if(!confirm(`ลบหมวด "${CATEGORIES[i].name}" ?`))return; // ⭐ confirm
+  CATEGORIES.splice(i,1);
+  saveCat();
+}
+
+function renderCatManager(){
+  catList.innerHTML="";
+  CATEGORIES.forEach((c,i)=>{
+    catList.innerHTML+=`
+    <div class="cat-item">
+      <div>
+        <b>${c.name}</b>
+        <small> (${c.regex})</small>
+      </div>
+      <div class="cat-actions">
+        <button class="ghost" onclick="toggleCat(${i})">
+          ${c.visible?"👁":"🚫"}
+        </button>
+        <button class="danger" onclick="removeCategory(${i})">ลบ</button>
+      </div>
+    </div>`;
   });
+}
+
+/* ===== SCORE ===== */
+const sell=p=>Math.round((p.avgViews||0)/1000);
+const feed=p=>Math.round((p.engagement||0)*30);
+const foi=p=>Math.min(100,Math.round(sell(p)*0.4+feed(p)*0.6));
+const roi=p=>Math.round(foi(p)*0.7);
+
+/* ===== LOAD ===== */
+function load(){
+  DATA=[
+    {name:"Topper รุ่น A",shop:"Shop A",avgViews:50000,engagement:2},
+    {name:"หมอนสุขภาพ",shop:"Shop B",avgViews:12000,engagement:1.2}
+  ];
+  reload();
+}
+
+function reload(){
+  renderCatManager();
+
+  DATA.forEach(p=>{
+    const cat=CATEGORIES.find(c=>c.visible&&new RegExp(c.regex,"i").test(p.name));
+    p.category=cat?cat.name:"อื่นๆ";
+    p.sell=sell(p);p.feed=feed(p);p.foi=foi(p);p.roi=roi(p);
+  });
+
+  FILTERED_DATA=DATA.filter(p=>p.category!=="อื่นๆ"||CATEGORIES.some(c=>!c.visible));
+  renderTable();
+  renderFilter();
+  dashboard();
+  buildGPT();
+}
+
+function renderFilter(){
+  catFilter.innerHTML='<option value="">ทุกหมวด</option>';
+  CATEGORIES.filter(c=>c.visible)
+    .forEach(c=>catFilter.innerHTML+=`<option>${c.name}</option>`);
 }
 
 function apply(){
   const q=search.value.toLowerCase();
   const c=catFilter.value;
-
-  FILTERED=DATA.filter(p=>
-    (!q || (p.name||"").toLowerCase().includes(q)) &&
-    (!c || p.category===c)
+  FILTERED_DATA=DATA.filter(p=>
+    (!q||p.name.toLowerCase().includes(q)) &&
+    (!c||p.category===c)
   );
-
-  CURRENT_PAGE=1;
-  render();
+  renderTable();
   dashboard();
+  buildGPT();
 }
 
-function render(){
-  PAGE_SIZE=parseInt(pageSize.value);
+function renderTable(){
   tb.innerHTML="";
-
-  const start=(CURRENT_PAGE-1)*PAGE_SIZE;
-  FILTERED.slice(start,start+PAGE_SIZE).forEach((p,i)=>{
+  FILTERED_DATA.sort((a,b)=>b.foi-a.foi).forEach((p,i)=>{
     tb.innerHTML+=`
 <tr>
-<td><input type="checkbox" class="pick" data-i="${start+i}"></td>
-<td>${start+i+1}</td>
-<td>${p.name||"-"}</td>
+<td><input type="checkbox" onchange="toggleSelect('${i}')" ${SELECTED.has(i)?"checked":""}></td>
+<td>#${i+1}</td>
+<td>${p.name}<br><small>${p.shop}</small></td>
 <td><span class="badge">${p.category}</span></td>
 <td class="foi">${p.foi}</td>
 <td>${p.roi}</td>
-<td>${p.url?`<a class="open" href="${p.url}" target="_blank">เปิด</a>`:"-"}</td>
+<td>${p.sell}</td>
+<td>${p.feed}</td>
 </tr>`;
   });
-
-  renderPagination();
 }
 
-function renderPagination(){
-  pagination.innerHTML="";
-  const total=Math.ceil(FILTERED.length/PAGE_SIZE) || 1;
-
-  for(let i=1;i<=total;i++){
-    const b=document.createElement("button");
-    b.className="page-btn"+(i===CURRENT_PAGE?" active":"");
-    b.textContent=i;
-    b.onclick=()=>{CURRENT_PAGE=i;render()};
-    pagination.appendChild(b);
-  }
-
-  pageInfo.textContent=`หน้า ${CURRENT_PAGE} / ${total}`;
+function toggleSelect(i){
+  SELECTED.has(i)?SELECTED.delete(i):SELECTED.add(i);
+  buildGPT();
 }
 
 function dashboard(){
-  total.innerText=DATA.length;
-  easy.innerText=DATA.filter(p=>p.foi>=75).length;
-  roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
+  total.innerText=FILTERED_DATA.length;
+  easy.innerText=FILTERED_DATA.filter(p=>p.foi>=75).length;
+  roiHigh.innerText=FILTERED_DATA.filter(p=>p.roi>=70).length;
   const c={};
-  DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
+  FILTERED_DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
   topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
 }
 
-function toggleAll(el){
-  document.querySelectorAll(".pick").forEach(c=>c.checked=el.checked);
+/* ===== GPT ===== */
+function buildGPT(){
+  const list=SELECTED.size
+    ? [...SELECTED].map(i=>FILTERED_DATA[i])
+    : FILTERED_DATA.slice(0,10);
+
+  gptPrompt.value=list.map((p,i)=>
+    `${i+1}. ${p.name} | ร้าน:${p.shop} | FOI:${p.foi}`
+  ).join("\n");
 }
 
-function genGPT(){
-  const picks=[...document.querySelectorAll(".pick:checked")]
-    .map(c=>FILTERED[c.dataset.i]);
-  gptBox.value=picks.map(p=>`- ${p.name}`).join("\n");
+function sendToGPT(){
+  navigator.clipboard.writeText(gptPrompt.value);
+  window.open("https://chat.openai.com");
 }
 
-function exportCSV(){}
-
-pageSize.onchange=()=>apply();
 load();
 </script>
 
