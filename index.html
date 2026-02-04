@@ -94,6 +94,8 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <select id="catFilter"></select>
   <button onclick="apply()">Filter</button>
   <button class="secondary" onclick="exportCSV()">Export CSV</button>
+  <button class="secondary" onclick="selectPage()">☑️ ALL</button>
+  <button class="secondary" onclick="clearSelected()">❌ ล้างที่เลือก</button>
   <button class="danger" onclick="clearData()">🧹 เคลียร์ข้อมูล</button>
 </div>
 
@@ -116,7 +118,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <table>
 <thead>
 <tr>
-<th>#</th><th>สินค้า</th><th>หมวด</th>
+<th>เลือก</th><th>#</th><th>สินค้า</th><th>หมวด</th>
 <th>FOI</th><th>ROI</th><th>Sell</th><th>Feed</th><th>สถานะ</th>
 </tr>
 </thead>
@@ -158,6 +160,14 @@ const IMPORT_PATH="/imports.json";
 let CURRENT_PAGE=1;
 let PAGE_SIZE=20;
 let FILTERED_DATA=[];
+
+/* ================= SELECT STATE ================= */
+const SELECT_KEY = "INDEX_PRO_SELECTED";
+let SELECTED = new Set(JSON.parse(localStorage.getItem(SELECT_KEY) || "[]"));
+
+function saveSelected(){
+  localStorage.setItem(SELECT_KEY, JSON.stringify([...SELECTED]));
+}
 
 /* ================= CATEGORY ================= */
 const CAT_KEY="INDEX_PRO_CATEGORIES";
@@ -264,19 +274,36 @@ function renderPage(){
 }
 function render(list){
   tb.innerHTML="";
+
   list.sort((a,b)=>b.foi-a.foi).forEach((p,i)=>{
+    const key = DATA.indexOf(p);             // 🔑 key ของสินค้า
+    const checked = SELECTED.has(key) ? "checked" : ""; // ✅ จำสถานะ
+
     tb.innerHTML+=`
 <tr>
-<td>#${(CURRENT_PAGE-1)*PAGE_SIZE+i+1}</td>
-<td>${p.name}<br><small>${p.shop}</small></td>
-<td><span class="badge">${p.category}</span></td>
-<td class="foi">${p.foi}</td>
-<td>${p.roi}</td>
-<td>${p.sell}</td>
-<td>${p.feed}</td>
-<td>${p.roi>=70?"💰":"⚠️"}</td>
+  <td>
+    <input type="checkbox"
+      ${checked}
+      onchange="toggleSelect(${key})"
+    >
+  </td>
+  <td>#${(CURRENT_PAGE-1)*PAGE_SIZE+i+1}</td>
+  <td>${p.name}<br><small>${p.shop}</small></td>
+  <td><span class="badge">${p.category}</span></td>
+  <td class="foi">${p.foi}</td>
+  <td>${p.roi}</td>
+  <td>${p.sell}</td>
+  <td>${p.feed}</td>
+  <td>${p.roi>=70?"💰":"⚠️"}</td>
 </tr>`;
   });
+}
+
+function toggleSelect(key){
+  if(SELECTED.has(key)) SELECTED.delete(key);
+  else SELECTED.add(key);
+  saveSelected();
+  buildGPT();
 }
 
 /* ================= PAGINATION UI ================= */
@@ -297,10 +324,42 @@ function renderPagination(){
 function gotoPage(p){CURRENT_PAGE=p;renderPage();}
 function changePageSize(){PAGE_SIZE=parseInt(pageSize.value);CURRENT_PAGE=1;renderPage();}
 
+/* ================= SELECT ACTION ================= */
+function selectPage(){
+  const start = (CURRENT_PAGE - 1) * PAGE_SIZE;
+  const pageItems = FILTERED_DATA.slice(start, start + PAGE_SIZE);
+
+  pageItems.forEach(p=>{
+    const key = DATA.indexOf(p);
+    SELECTED.add(key);
+  });
+
+  saveSelected();
+  renderPage();
+  buildGPT();
+}
+
+/* ================= CLEAR SELECTED ================= */
+function clearSelected(){
+  if(!SELECTED.size) return;
+
+  if(!confirm("ล้างสินค้าที่เลือกทั้งหมด?")) return;
+
+  SELECTED.clear();          // ล้าง Set
+  saveSelected();            // sync localStorage
+  renderPage();              // refresh checkbox
+  buildGPT();                // refresh GPT text
+}
+
 /* ================= GPT ================= */
 function buildGPT(){
-  gptPrompt.value=FILTERED_DATA.slice(0,10)
-    .map((p,i)=>`${i+1}. ${p.name} | ร้าน:${p.shop} | FOI:${p.foi}`).join("\n");
+  const list = SELECTED.size
+    ? [...SELECTED].map(i => DATA[i])
+    : FILTERED_DATA.slice(0,10);
+
+  gptPrompt.value = list.map((p,i)=>
+    `${i+1}. ${p.name} | หมวด:${p.category} | ร้าน:${p.shop} | FOI:${p.foi}`
+  ).join("\n");
 }
 function sendToGPT(){
   navigator.clipboard.writeText(gptPrompt.value)
