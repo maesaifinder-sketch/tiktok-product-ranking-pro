@@ -73,6 +73,9 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <input id="catName" placeholder="ชื่อหมวด">
   <input id="catRegex" placeholder="Keyword / Regex">
   <button onclick="addCategory()">➕ เพิ่มหมวด</button>
+  <button class="danger" onclick="clearProductsAndCategories()">
+  🧹 ลบสินค้า & หมวดหมู่
+</button>
   <hr>
   <div id="catList" class="cat-scroll"></div>
 </div>
@@ -105,6 +108,40 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 </div>
 
 <script>
+async function clearProductsAndCategories(){
+  if(!confirm("ต้องการลบสินค้าใน Firebase และล้างหมวดหมู่ทั้งหมดใช่ไหม?")) return;
+
+  try{
+    // 1️⃣ ลบสินค้าใน Firebase (/imports)
+    const url = DB_ROOT + "/imports.json";
+    const res = await fetch(url,{ method:"DELETE" });
+
+    if(!res.ok) throw new Error("Firebase delete failed");
+
+    // 2️⃣ ลบหมวดหมู่ (localStorage)
+    localStorage.removeItem(CAT_KEY);
+    CATEGORIES = [...DEFAULT_CATS];
+
+    // 3️⃣ Reset data ในระบบ
+    DATA = [];
+    FILTERED_DATA = [];
+    CURRENT_PAGE = 1;
+
+    // 4️⃣ รีเฟรช UI
+    renderCatManager();
+    filterCat();
+    dashboard();
+    buildGPT();
+    renderPage();
+
+    alert("ลบสินค้าและรีเซ็ตหมวดหมู่เรียบร้อยแล้ว ✅");
+
+  }catch(e){
+    console.error(e);
+    alert("เกิดข้อผิดพลาดในการลบข้อมูล ❌");
+  }
+}
+
 let DATA=[],FILTERED_DATA=[],SELECTED=new Set();
 
 /* ===== CATEGORY ===== */
