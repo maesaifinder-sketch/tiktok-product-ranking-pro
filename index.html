@@ -5,111 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Index PRO+ – TikTok Feed Intelligence</title>
 
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-
-<script>
-async function decodeQRFromImage(imgUrl){
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.src = imgUrl;
-
-  await new Promise(r=>img.onload=r);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = img.width;
-  canvas.height = img.height;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img,0,0);
-
-  const imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
-  const qr = jsQR(imageData.data, imageData.width, imageData.height);
-
-  return qr?.data || "";
-}
-</script>
-
-<script>
-async function resolveProductFromImage(p){
-  if(!p.image) return null;
-
-  const qrUrl = await decodeQRFromImage(p.image);
-  if(!qrUrl) return null;
-
-  const realUrl = await resolveTikTokURL(qrUrl);
-  const pid = extractProductId(realUrl);
-
-  if(pid){
-    return `https://www.tiktok.com/view/product/${pid}`;
-  }
-  return realUrl;
-}
-</script>
-
-<script>
-async function genLink(key){
-  const p = DATA[key];
-  alert("⏳ กำลังถอด QR + ลิงก์...");
-
-  const link = await resolveProductFromImage(p);
-
-  if(link){
-    p.affiliate_url = link;
-    alert("✅ เจอ Product Link แล้ว");
-    renderPage();
-  }else{
-    alert("❌ ไม่พบ QR หรือไม่ใช่ลิงก์สินค้า");
-  }
-}
-</script>
-
-<script>
-async function resolveTikTokURL(url){
-  try{
-    const r = await fetch(url, { redirect:"follow" });
-    return r.url || url;
-  }catch(e){
-    return url;
-  }
-}
-
-function extractProductId(url){
-  const m = url.match(/product\/(\d+)/);
-  return m ? m[1] : "";
-}
-</script>
-
 <style>
-    
-    /* ===== TABLE FIX ===== */
-.table-wrap{
-  width:100%;
-  overflow-x:auto;
-}
-
-table{
-  width:100%;
-  table-layout:fixed; /* ⭐ ตัวนี้คือหัวใจ */
-}
-
-th,td{
-  white-space:normal;
-  word-break:break-word;
-  text-align:center;
-}
-
-/* กำหนดความกว้างคอลัมน์ */
-th:nth-child(1), td:nth-child(1){width:60px}   /* เลือก */
-th:nth-child(2), td:nth-child(2){width:60px}   /* # */
-th:nth-child(3), td:nth-child(3){width:70px}   /* รูป */
-th:nth-child(4), td:nth-child(4){width:300px}  /* สินค้า */
-th:nth-child(5), td:nth-child(5){width:100px}  /* หมวด */
-th:nth-child(6), td:nth-child(6){width:80px}   /* FOI */
-th:nth-child(7), td:nth-child(7){width:80px}   /* ROI */
-th:nth-child(8), td:nth-child(8){width:80px}   /* Sell */
-th:nth-child(9), td:nth-child(9){width:80px}   /* Feed */
-th:nth-child(10),td:nth-child(10){width:90px}  /* Aff */
-th:nth-child(11),td:nth-child(11){width:80px}  /* สถานะ */
-
 body{margin:0;font-family:system-ui;background:#f1f5f9}
 header{background:#020617;color:#fff;padding:20px}
 .container{max-width:1500px;margin:auto;padding:20px}
@@ -131,20 +27,6 @@ button.danger{background:#dc2626}
 textarea{width:100%;min-height:160px}
 small{color:#64748b}
 hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
-
-td a, td button{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:4px;
-  white-space:nowrap;
-  font-size:13px;
-}
-
-td button{
-  padding:6px 10px;
-  border-radius:8px;
-}
 
 /* CATEGORY SCROLL */
 .cat-scroll{max-height:260px;overflow-y:auto;padding-right:6px}
@@ -200,6 +82,21 @@ td button{
   font-size:14px;
   color:#64748b;
 }
+.product-btn{
+  display:inline-block;
+  padding:4px 10px;
+  font-size:12px;
+  font-weight:600;
+  border-radius:999px;
+  background:#ecfeff;
+  color:#0369a1;
+  border:1px solid #67e8f9;
+  text-decoration:none;
+}
+.product-btn:hover{
+  background:#cffafe;
+}
+
 </style>
 </head>
 
@@ -249,12 +146,11 @@ td button{
 
 <!-- TABLE -->
 <div class="card">
-<div class="table-wrap">
 <table>
 <thead>
 <tr>
 <th>เลือก</th><th>#</th><th>รูป</th><th>สินค้า</th><th>หมวด</th>
-<th>FOI</th><th>ROI</th><th>Sell</th><th>Feed</th><th>Aff</th><th>สถานะ</th>
+<th>FOI</th><th>ROI</th><th>Sell</th><th>Feed</th><th>สถานะ</th>
 </tr>
 </thead>
 <tbody id="tb"></tbody>
@@ -290,6 +186,14 @@ td button{
 /* ================= CONFIG ================= */
 const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
+
+/* ================= PRODUCT LINK ================= */
+function buildProductLink(p){
+  if(p.product_id){
+    return `https://www.tiktok.com/view/product/${p.product_id}`;
+  }
+  return "";
+}
 
 /* ================= PAGINATION STATE ================= */
 let CURRENT_PAGE=1;
@@ -416,6 +320,14 @@ async function load(){
 }
 
 /* ================= UI ================= */
+
+function renderPage(){
+  const start = (CURRENT_PAGE - 1) * PAGE_SIZE;
+  const pageData = FILTERED_DATA.slice(start, start + PAGE_SIZE);
+
+  render(pageData);
+  renderPagination();
+}
 function reload(){
   dashboard();
   filterCat();
@@ -442,80 +354,60 @@ function apply(){
   renderPage();
 }
 
+/* ================= PRODUCT LINK HELPERS ================= */
+// STEP 2 — helper สร้าง Product Link (ใช้ตอน render)
+function buildProductLink(p){
+  if(!p) return "";
+
+  // กรณีมี product_id ตรง
+  if(p.product_id){
+    return `https://www.tiktok.com/view/product/${p.product_id}`;
+  }
+
+  // fallback: ถ้ามี product_url เต็มอยู่แล้ว
+  if(p.product_url && p.product_url.startsWith("http")){
+    return p.product_url;
+  }
+
+  return "";
+}
+
 /* ================= RENDER ================= */
-function renderPage(){
-  const start=(CURRENT_PAGE-1)*PAGE_SIZE;
-  render(FILTERED_DATA.slice(start,start+PAGE_SIZE));
-  renderPagination();
-}
 function render(list){
   tb.innerHTML="";
 
-  list.sort((a,b)=>b.foi-a.foi).forEach((p,i)=>{
-    const key = DATA.indexOf(p);             // 🔑 key ของสินค้า
-    const checked = SELECTED.has(key) ? "checked" : ""; // ✅ จำสถานะ
-
-    tb.innerHTML+=`
-<tr>
-  <td>
-    <input type="checkbox"
-      ${checked}
-      onchange="toggleSelect(${key})"
-    >
-  </td>
-  <td>#${(CURRENT_PAGE-1)*PAGE_SIZE+i+1}</td>
-  <td>
-  <img
-    class="thumb"
-    src="${p.image || 'https://via.placeholder.com/80?text=No+Image'}"
-    onerror="this.src='https://via.placeholder.com/80?text=No+Image'"
-  >
-</td>
-
-<td>
-  ${p.name}
-  <br>
-  <small>${p.shop}</small>
-</td>
-  <td><span class="badge">${p.category}</span></td>
-  <td class="foi">${p.foi}</td>
-  <td>${p.roi}</td>
-  <td>${p.sell}</td>
-  <td>${p.feed}</td>
-  <td>${p.roi>=70?"💰":"⚠️"}</td>
-</tr>`;
-  });
-}
-
-function render(list){
-  tb.innerHTML="";
-
-  list.sort((a,b)=>b.foi-a.foi).forEach((p,i)=>{
+  list
+  .sort((a,b)=>b.foi-a.foi)
+  .forEach((p,i)=>{
     const key = DATA.indexOf(p);
     const checked = SELECTED.has(key) ? "checked" : "";
+    const productLink = buildProductLink(p);
 
-    tb.innerHTML+=`
+    tb.innerHTML += `
 <tr>
   <td>
-    <input type="checkbox"
-      ${checked}
-      onchange="toggleSelect(${key})"
-    >
+    <input type="checkbox" ${checked}
+      onchange="toggleSelect(${key})">
   </td>
 
   <td>#${(CURRENT_PAGE-1)*PAGE_SIZE+i+1}</td>
 
   <td>
-    <img
-      class="thumb"
-      src="${p.image || 'https://via.placeholder.com/80?text=No+Image'}"
-      onerror="this.src='https://via.placeholder.com/80?text=No+Image'"
-    >
+    <img class="thumb"
+      src="${p.image || 'https://via.placeholder.com/80'}">
   </td>
 
   <td>
-    ${p.name}<br>
-    <small>${p.shop}</small>
+    <b>${p.name}</b><br>
+
+    ${productLink ? `
+      <div style="margin-top:6px">
+        <a href="${productLink}" target="_blank"
+           class="product-btn">
+          🔗 Product
+        </a>
+      </div>
+    ` : ``}
   </td>
 
   <td><span class="badge">${p.category}</span></td>
@@ -523,15 +415,6 @@ function render(list){
   <td>${p.roi}</td>
   <td>${p.sell}</td>
   <td>${p.feed}</td>
-  
-  <td>
-  ${
-    p.affiliate_url
-      ? `<a href="${p.affiliate_url}" target="_blank">🔗 Link</a>`
-      : `<button onclick="genLink(${key})">🧠 หา Link</button>`
-  }
-</td>
-
   <td>${p.roi>=70?"💰":"⚠️"}</td>
 </tr>`;
   });
@@ -596,7 +479,7 @@ function buildGPT(){
     : FILTERED_DATA.slice(0,10);
 
   gptPrompt.value = list.map((p,i)=>
-    `${i+1}. ${p.name} | คลิก:${p.shop} | FOI:${p.foi}`
+    `${i+1}. ${p.name} | หมวด:${p.category} | ร้าน:${p.shop} | FOI:${p.foi}`
   ).join("\n");
 }
 function sendToGPT(){
