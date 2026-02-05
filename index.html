@@ -149,8 +149,16 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <table>
 <thead>
 <tr>
-<th>เลือก</th><th>#</th><th>รูป</th><th>สินค้า</th><th>หมวด</th>
-<th>FOI</th><th>ROI</th><th>Sell</th><th>Feed</th><th>สถานะ</th>
+  <th>เลือก</th>
+  <th>#</th>
+  <th>รูป</th>
+  <th>ชื่อสินค้า</th>
+  <th>ID</th>
+  <th>Product Link</th>
+  <th>ราคา</th>
+  <th>สต็อก</th>
+  <th>Feed</th>
+  <th>สถานะ</th>
 </tr>
 </thead>
 <tbody id="tb"></tbody>
@@ -274,10 +282,22 @@ function renderCatManager(){
 
 function reassignCategories(){
   DATA.forEach(p=>{
-    p.category =
-      Object.values(CATEGORIES).find(c =>
-        new RegExp(c.regex,"i").test(p.name)
-      )?.name || "อื่นๆ";
+
+    // 🛡️ กันพัง: ถ้าไม่มีชื่อสินค้า
+    if(!p || !p.name){
+      p.category = "อื่นๆ";
+      return;
+    }
+
+    const found = CATEGORIES.find(c=>{
+      try{
+        return new RegExp(c.regex,"i").test(p.name);
+      }catch(e){
+        return false;
+      }
+    });
+
+    p.category = found ? found.name : "อื่นๆ";
   });
 }
 
@@ -305,15 +325,23 @@ async function load(){
   const j=await r.json();
   if(!j)return;
   DATA=[];
+  
   Object.values(j).forEach(b=>{
     (b.items||[]).forEach(p=>{
-      p.shop=p.shop||"-";
-      p.sell=sellScore(p);
-      p.feed=feedScore(p);
-      p.foi=FOI(p);
-      p.roi=roiScore(p);
-      DATA.push(p);
-    });
+
+  // normalize field
+  p.name  = p.name || p.title || p.product_name || p.product_id;
+  p.price = Number(p.price || 0);
+  p.stock = p.stock || p.inventory || 0;
+
+  p.shop  = p.shop || "-";
+  p.sell  = sellScore(p);
+  p.feed  = feedScore(p);
+  p.foi   = FOI(p);
+  p.roi   = roiScore(p);
+
+  DATA.push(p);
+});
   });
   reassignCategories(); // ✅ เพิ่มบรรทัดนี้
   reload();
@@ -345,7 +373,14 @@ function dashboard(){
 }
 function filterCat(){
   catFilter.innerHTML='<option value="">ทุกหมวด</option>';
-  [...new Set(DATA.map(p=>p.category))].forEach(c=>catFilter.innerHTML+=`<option>${c}</option>`);
+
+  [...new Set(
+    DATA
+      .filter(p=>p && p.category)
+      .map(p=>p.category)
+  )].forEach(c=>{
+    catFilter.innerHTML+=`<option>${c}</option>`;
+  });
 }
 function apply(){
   const q=search.value.toLowerCase(),c=catFilter.value;
@@ -374,50 +409,68 @@ function buildProductLink(p){
 
 /* ================= RENDER ================= */
 function render(list){
-  tb.innerHTML="";
+  tb.innerHTML = "";
 
   list
-  .sort((a,b)=>b.foi-a.foi)
-  .forEach((p,i)=>{
-    const key = DATA.indexOf(p);
-    const checked = SELECTED.has(key) ? "checked" : "";
-    const productLink = buildProductLink(p);
+    .sort((a,b)=>b.foi-a.foi)
+    .forEach((p,i)=>{
+      const key = DATA.indexOf(p);
+      const checked = SELECTED.has(key) ? "checked" : "";
+      const productLink = buildProductLink(p);
 
-    tb.innerHTML += `
+      tb.innerHTML += `
 <tr>
+  <!-- เลือก -->
   <td>
     <input type="checkbox" ${checked}
       onchange="toggleSelect(${key})">
   </td>
 
+  <!-- # -->
   <td>#${(CURRENT_PAGE-1)*PAGE_SIZE+i+1}</td>
 
+  <!-- รูป -->
   <td>
     <img class="thumb"
       src="${p.image || 'https://via.placeholder.com/80'}">
   </td>
 
+  <!-- ชื่อสินค้า -->
   <td>
-    <b>${p.name}</b><br>
-
-    ${productLink ? `
-      <div style="margin-top:6px">
-        <a href="${buildProductLink(p)}" target="_blank"
-           class="product-btn">
-          🔗 Product
-        </a>
-      </div>
-    ` : ``}
+    <b>${p.name}</b>
   </td>
 
-  <td><span class="badge">${p.category}</span></td>
-  <td class="foi">${p.foi}</td>
-  <td>${p.roi}</td>
-  <td>${p.sell}</td>
+  <!-- ID -->
+  <td>
+    <small>${p.product_id || "-"}</small>
+  </td>
+
+  <!-- Product Link -->
+  <td>
+    ${productLink ? `
+      <a href="${productLink}" target="_blank" class="product-btn">
+        🔗 เปิดสินค้า
+      </a>
+    ` : "-"}
+  </td>
+
+  <!-- ราคา -->
+  <td>
+    ฿${Number(p.price || 0).toFixed(2)}
+  </td>
+
+  <!-- สต็อก -->
+  <td>
+    ${Number(p.stock || 0).toLocaleString()}
+  </td>
+
+  <!-- Feed -->
   <td>${p.feed}</td>
-  <td>${p.roi>=70?"💰":"⚠️"}</td>
+
+  <!-- สถานะ -->
+  <td>${p.roi >= 70 ? "💰" : "⚠️"}</td>
 </tr>`;
-  });
+    });
 }
 
 function toggleSelect(key){
@@ -475,11 +528,11 @@ function clearSelected(){
 /* ================= GPT ================= */
 function buildGPT(){
   const list = SELECTED.size
-    ? [...SELECTED].map(i => DATA[i])
+    ? [...SELECTED].map(i => DATA[i]).filter(Boolean)
     : FILTERED_DATA.slice(0,10);
 
   gptPrompt.value = list.map((p,i)=>
-    `${i+1}. ${p.name} | link:${buildProductLink(p)} | FOI:${p.foi}`
+    `${i+1}. ${p.name || "-"} | link:${buildProductLink(p)} | FOI:${p.foi || 0}`
   ).join("\n");
 }
 function sendToGPT(){
