@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -155,9 +155,6 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <th>Name</th>
   <th>ID</th>
   <th>Product Link</th>
-  <th>ราคา</th>
-  <th>Feed</th>
-  <th>สถานะ</th>
 </tr>
 </thead>
 <tbody id="tb"></tbody>
@@ -459,17 +456,6 @@ function render(list){
       </a>
     ` : "-"}
   </td>
-
-  <!-- ราคา -->
-  <td>
-    ฿${Number(p.price || 0).toLocaleString(undefined,{minimumFractionDigits:2})}
-  </td>
-
-  <!-- Feed -->
-  <td>${p.feed}</td>
-
-  <!-- สถานะ -->
-  <td>${p.roi >= 70 ? "💰" : "⚠️"}</td>
 </tr>`;
     });
 }
