@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -152,6 +152,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <th>เลือก</th>
   <th>#</th>
   <th>รูป</th>
+  <th>Name</th>
   <th>ID</th>
   <th>Product Link</th>
   <th>ราคา</th>
@@ -195,8 +196,10 @@ const IMPORT_PATH="/imports.json";
 
 /* ================= PRODUCT LINK ================= */
 function buildProductLink(p){
-  if(p.name){
-    return `https://shop.tiktok.com/view/product/${p.name}?region=TH&locale=th-TH&source=agency`;
+  if(!p) return "";
+  const pid = (p.product_id || p.productId || p.id || p.pid || "").toString().replace(/[^\d]/g,"");
+  if(pid){
+    return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
   }
   return "";
 }
@@ -328,7 +331,12 @@ async function load(){
     (b.items||[]).forEach(p=>{
 
   // normalize field
-  p.name  = p.name || p.title || p.product_name || p.product_id;
+  // Name (ข้อความ) + Product ID (ตัวเลขล้วน)
+  const rawId = (p.product_id || p.productId || p.id || p.pid || p.productID || "");
+  const pid = rawId ? rawId.toString().replace(/[^\d]/g,"") : "";
+  p.product_id = pid;
+
+  p.name  = p.name || p.title || p.product_name || "-";
   p.price = Number(p.price || 0) / 100;
   p.stock = p.stock || p.inventory || 0;
 
@@ -433,9 +441,14 @@ function render(list){
       src="${p.image || 'https://via.placeholder.com/80'}">
   </td>
 
-  <!-- ชื่อสินค้า -->
+  <!-- Name -->
   <td>
     <b>${p.name}</b>
+  </td>
+
+  <!-- ID -->
+  <td>
+    <code>${p.product_id || "-"}</code>
   </td>
 
   <!-- Product Link -->
