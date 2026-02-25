@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -152,7 +152,8 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <th>เลือก</th>
   <th>#</th>
   <th>รูป</th>
-  <th>ชื่อ/ID</th>
+  <th>ชื่อสินค้า</th>
+  <th>ID</th>
   <th>Product Link</th>
   <th>ราคา</th>
   <th>Feed</th>
@@ -190,24 +191,12 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
 <script>
 /* ================= CONFIG ================= */
+function digitsOnly(s){
+  const m = String(s || "").match(/\d+/g);
+  return m ? m.join("") : "";
+}
 const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
-
-/* ================= PRODUCT LINK ================= */
-function buildProductLink(p){
-  if(!p) return "";
-
-  const pid = getProductId(p);
-  if(pid){
-    return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
-  }
-
-  // fallback: ถ้ามี product_url เต็มอยู่แล้ว
-  if(p.product_url && String(p.product_url).startsWith("http")){
-    return p.product_url;
-  }
-  return "";
-}
 
 
 /* ================= PAGINATION STATE ================= */
@@ -291,14 +280,14 @@ function reassignCategories(){
   DATA.forEach(p=>{
 
     // 🛡️ กันพัง: ถ้าไม่มีชื่อสินค้า
-    if(!p || !p.name){
+    if(!p || !getProductName(p)){
       p.category = "อื่นๆ";
       return;
     }
 
     const found = CATEGORIES.find(c=>{
       try{
-        return new RegExp(c.regex,"i").test(p.name);
+        return new RegExp(c.regex,"i").test(getProductName(p));
       }catch(e){
         return false;
       }
@@ -337,15 +326,24 @@ async function load(){
     (b.items||[]).forEach(p=>{
 
   // normalize field
-  p.name  = p.name || p.title || p.product_name || p.product_id;
-  p.price = Number(p.price || 0) / 100;
-  p.stock = p.stock || p.inventory || 0;
+  // normalize field
+// ✅ ${pid} = product Name
+p.pid = p.pid || p.product_name || p.title || "";
 
-  p.shop  = p.shop || "-";
-  p.sell  = sellScore(p);
-  p.feed  = feedScore(p);
-  p.foi   = FOI(p);
-  p.roi   = roiScore(p);
+// ✅ ${p.name} = Product ID (digits only)
+p.name = digitsOnly(p.name || p.product_id || p.productId || "");
+
+// เผื่อยังใช้ field เดิมที่อื่น
+p.product_name = p.product_name || p.pid;
+
+p.price = Number(p.price || 0) / 100;
+p.stock = p.stock || p.inventory || 0;
+
+p.shop  = p.shop || "-";
+p.sell  = sellScore(p);
+p.feed  = feedScore(p);
+p.foi   = FOI(p);
+p.roi   = roiScore(p);
 
   DATA.push(p);
 });
@@ -391,7 +389,10 @@ function filterCat(){
 }
 function apply(){
   const q=search.value.toLowerCase(),c=catFilter.value;
-  FILTERED_DATA=DATA.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!c||p.category===c));
+  FILTERED_DATA=DATA.filter(p=>{
+    const n=(getProductName(p)||"").toLowerCase();
+    return (!q||n.includes(q)) && (!c||p.category===c);
+  });
   CURRENT_PAGE=1;
   renderPage();
 }
@@ -401,9 +402,10 @@ function apply(){
 function buildProductLink(p){
   if(!p) return "";
 
-  // กรณีมี product_id ตรง
-  if(p.name){
-    return `https://shop.tiktok.com/view/product/${p.name}?region=TH&locale=th-TH&source=agency`;
+  // กรณีมี product_id ตรง (p.name = Product ID)
+  const pid = digitsOnly(p.name);
+  if(pid){
+    return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
   }
 
   // fallback: ถ้ามี product_url เต็มอยู่แล้ว
@@ -412,6 +414,26 @@ function buildProductLink(p){
   }
 
   return "";
+}
+
+function getProductName(p){
+  return (p?.pid || p?.product_name || p?.title || "").toString().trim();
+}
+
+/* ================= PRODUCT ID HELPERS ================= */
+
+function getProductId(p){
+  if(!p) return "";
+  const v = digitsOnly(p.name);
+  if(v) return v;
+
+  // fallback ข้อมูลเก่า
+  const v2 = digitsOnly(p.product_id || p.productId || "");
+  if(v2) return v2;
+
+  const url = buildProductLink(p) || p.product_url || p.url || "";
+  const m = String(url).match(/product\/(\d+)/) || String(url).match(/\/(\d{15,})/);
+  return m ? m[1] : "";
 }
 
 /* ================= RENDER ================= */
@@ -444,7 +466,12 @@ function render(list){
 
   <!-- ชื่อสินค้า -->
   <td>
-    <b>${p.name}</b>
+    <b>${getProductName(p) || "-"}</b>
+  </td>
+
+  <!-- ID สินค้า -->
+  <td>
+    <code style="font-size:12px">${getProductId(p) || "-"}</code>
   </td>
 
   <!-- Product Link -->
@@ -529,8 +556,8 @@ function buildGPT(){
     : FILTERED_DATA.slice(0,10);
 
   gptPrompt.value = list.map((p,i)=>
-    `${i+1}. ${p.name || "-"} | link:${buildProductLink(p)} | FOI:${p.foi || 0}`
-  ).join("\n");
+  `${i+1}. ${getProductName(p) || "-"} | id:${getProductId(p) || "-"} | link:${buildProductLink(p)} | FOI:${p.foi || 0}`
+).join("\n");
 }
 function sendToGPT(){
   navigator.clipboard.writeText(gptPrompt.value)
