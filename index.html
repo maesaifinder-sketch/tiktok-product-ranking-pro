@@ -191,14 +191,16 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
 <script>
 /* ================= CONFIG ================= */
-function digitsOnly(s){
-  const m = String(s || "").match(/\d+/g);
-  return m ? m.join("") : "";
-}
-
 const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
 
+/* ================= PRODUCT LINK ================= */
+function buildProductLink(p){
+  if(p.name){
+    return `https://shop.tiktok.com/view/product/${p.name}?region=TH&locale=th-TH&source=agency`;
+  }
+  return "";
+}
 
 /* ================= PAGINATION STATE ================= */
 let CURRENT_PAGE=1;
@@ -391,13 +393,11 @@ function apply(){
 function buildProductLink(p){
   if(!p) return "";
 
-  // กรณีมี product_id ตรง (p.name = Product ID) — ดึงเฉพาะตัวเลข
-  const pid = digitsOnly(p.name);
+  const pid = digitsOnly(p.name); // Product ID (digits only)
   if(pid){
     return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
   }
 
-  // fallback: ถ้ามี product_url เต็มอยู่แล้ว
   if(p.product_url && String(p.product_url).startsWith("http")){
     return p.product_url;
   }
@@ -414,12 +414,11 @@ function getProductName(p){
 /* ================= PRODUCT ID HELPERS ================= */
 function getProductId(p){
   if(!p) return "";
-  const v = digitsOnly(p.name);
-  if(v) return v;
+  if(p.product_id) return String(p.product_id);
+  if(p.productId) return String(p.productId);
+  if(p.pid) return String(p.pid);
 
-  // fallback ข้อมูลเก่า
-  const v2 = digitsOnly(p.product_id || p.productId || "");
-  if(v2) return v2;
+  if(typeof p.name === "string" && /^\d{10,}$/.test(p.name.trim())) return p.name.trim();
 
   const url = buildProductLink(p) || p.product_url || p.url || "";
   const m = String(url).match(/product\/(\d+)/) || String(url).match(/\/(\d{15,})/);
@@ -456,7 +455,7 @@ function render(list){
 
   <!-- ชื่อสินค้า -->
   <td>
-    <b>${p.name}</b>
+    <b>${getProductName(p) || "-"}</b>
   </td>
 
   <!-- ID สินค้า -->
