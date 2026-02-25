@@ -152,8 +152,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <th>เลือก</th>
   <th>#</th>
   <th>รูป</th>
-  <th>ชื่อสินค้า</th>
-  <th>ID</th>
+  <th>ชื่อ/ID</th>
   <th>Product Link</th>
   <th>ราคา</th>
   <th>Feed</th>
@@ -194,41 +193,54 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
 
-/* ================= PRODUCT LINK ================= */
-function buildProductLink(p){
-  const pid = getProductId(p);
-  if(pid){
-    return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
-  }
-  // fallback: stored url
-  if(p?.product_url && String(p.product_url).startsWith("http")) return p.product_url;
-  if(p?.url && String(p.url).startsWith("http")) return p.url;
-  return "";
-}
 
 
 /* ================= PRODUCT TEXT HELPERS ================= */
 function isNumericIdText(s){
-  return typeof s === 'string' && /^\d{10,}$/.test(s.trim());
+  return typeof s === 'string' && /^\d{10,}$/.test(String(s).trim());
 }
+// ✅ ใหม่: ${pid} = Product Name
 function getProductName(p){
-  const candidates = [p?.product_name, p?.title, p?.name];
+  const candidates = [p?.product_name, p?.title, p?.pid]; // pid = product name (ตามที่ขอ)
   for(const c of candidates){
     const v = (c ?? '').toString().trim();
     if(!v) continue;
-    if(isNumericIdText(v)) continue; // กันชื่อกลายเป็นเลข ID
+    if(isNumericIdText(v)) continue;
     return v;
   }
   return "";
 }
+// ✅ ใหม่: ${p.name} = Product ID
 function getProductId(p){
-  const v = (p?.product_id || p?.productId || p?.pid || "").toString().trim();
-  if(v) return v;
-  if(typeof p?.name === 'string' && isNumericIdText(p.name)) return p.name.trim(); // backward compat
-  const url = buildProductLink(p) || "";
+  const v = (p?.name ?? p?.product_id ?? p?.productId ?? "").toString().trim();
+  if(v && isNumericIdText(v)) return v;
+  const url = p?.product_url || p?.url || "";
   const m = String(url).match(/product\/(\d+)/) || String(url).match(/\/(\d{15,})/);
   return m ? m[1] : "";
 }
+
+/* ================= PRODUCT LINK HELPERS ================= */
+// STEP 2 — helper สร้าง Product Link (ใช้ตอน render)
+function buildProductLink(p){
+  if(!p) return "";
+
+  // กรณีมี Product ID ใน p.name
+  const pid = getProductId(p);
+  if(pid){
+    return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
+  }
+
+  // fallback: ถ้ามี product_url เต็มอยู่แล้ว
+  if(p.product_url && String(p.product_url).startsWith("http")){
+    return p.product_url;
+  }
+  if(p.url && String(p.url).startsWith("http")){
+    return p.url;
+  }
+
+  return "";
+}
+
 
 /* ================= PAGINATION STATE ================= */
 let CURRENT_PAGE=1;
@@ -318,7 +330,7 @@ function reassignCategories(){
 
     const found = CATEGORIES.find(c=>{
       try{
-        return new RegExp(c.regex,"i").test(p.name);
+        return new RegExp(c.regex,'i').test(getProductName(p) || '');
       }catch(e){
         return false;
       }
@@ -356,8 +368,15 @@ async function load(){
   Object.values(j).forEach(b=>{
     (b.items||[]).forEach(p=>{
 
-  // normalize field
-  p.name  = p.name || p.title || p.product_name || p.product_id;
+  // normalize field (ตามสเปคใหม่)
+  // ${pid} = Product Name
+  p.pid = p.pid || p.product_name || p.title || p.name;
+  // ${p.name} = Product ID
+  const _maybeId = (p.name ?? "").toString().trim();
+  p.name = (/^\d{10,}$/.test(_maybeId) ? _maybeId : (p.product_id || p.productId || _maybeId || ""));
+  // เก็บชื่อไว้ชัดเจน
+  p.product_name = p.product_name || p.pid;
+
   p.price = Number(p.price || 0) / 100;
   p.stock = p.stock || p.inventory || 0;
 
@@ -411,28 +430,11 @@ function filterCat(){
 }
 function apply(){
   const q=search.value.toLowerCase(),c=catFilter.value;
-  FILTERED_DATA=DATA.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!c||p.category===c));
+  FILTERED_DATA=DATA.filter(p=>{const n=(getProductName(p)||'').toLowerCase();return (!q||n.includes(q))&&(!c||p.category===c);});
   CURRENT_PAGE=1;
   renderPage();
 }
 
-/* ================= PRODUCT LINK HELPERS ================= */
-// STEP 2 — helper สร้าง Product Link (ใช้ตอน render)
-function buildProductLink(p){
-  if(!p) return "";
-
-  // กรณีมี product_id ตรง
-  if(p.name){
-    return `https://shop.tiktok.com/view/product/${getProductName(p) || '-'}?region=TH&locale=th-TH&source=agency`;
-  }
-
-  // fallback: ถ้ามี product_url เต็มอยู่แล้ว
-  if(p.product_url && p.product_url.startsWith("http")){
-    return p.product_url;
-  }
-
-  return "";
-}
 
 /* ================= RENDER ================= */
 function render(list){
@@ -464,12 +466,7 @@ function render(list){
 
   <!-- ชื่อสินค้า -->
   <td>
-    <b>${getProductName(p) || '-'}</b>
-  </td>
-
-  <!-- ID สินค้า -->
-  <td>
-    <code style="font-size:12px">${getProductId(p) || '-'}</code>
+    <b>${p.name}</b>
   </td>
 
   <!-- Product Link -->
@@ -554,7 +551,7 @@ function buildGPT(){
     : FILTERED_DATA.slice(0,10);
 
   gptPrompt.value = list.map((p,i)=>
-    `${i+1}. ${p.name || "-"} | link:${buildProductLink(p)} | FOI:${p.foi || 0}`
+    `${i+1}. ${getProductName(p) || '-'} | id:${getProductId(p) || '-'} | link:${buildProductLink(p)} | FOI:${p.foi || 0}`
   ).join("\n");
 }
 function sendToGPT(){
