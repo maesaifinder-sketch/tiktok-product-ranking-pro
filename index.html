@@ -152,7 +152,8 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <th>เลือก</th>
   <th>#</th>
   <th>รูป</th>
-  <th>ชื่อ/ID</th>
+  <th>Name</th>
+  <th>ID</th>
   <th>Product Link</th>
   <th>ราคา</th>
   <th>Feed</th>
@@ -195,8 +196,15 @@ const IMPORT_PATH="/imports.json";
 
 /* ================= PRODUCT LINK ================= */
 function buildProductLink(p){
-  if(p.name){
-    return `https://shop.tiktok.com/view/product/${p.name}?region=TH&locale=th-TH&source=agency`;
+  if(!p) return "";
+  const pid = (p.product_id || p.pid || p.id_num || p.productId || "")
+    .toString()
+    .replace(/[^\d]/g,"");
+  if(pid){
+    return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
+  }
+  if(p.product_url && p.product_url.startsWith("http")){
+    return p.product_url;
   }
   return "";
 }
@@ -328,7 +336,9 @@ async function load(){
     (b.items||[]).forEach(p=>{
 
   // normalize field
-  p.name  = p.name || p.title || p.product_name || p.product_id;
+  p.product_id = (p.product_id || p.pid || p.id_num || p.productId || "").toString().replace(/[^\\d]/g,"");
+  p.name  = p.name || p.title || p.product_name || "-";
+  if(p.name === "-" && p.product_id) p.name = "Product " + p.product_id;
   p.price = Number(p.price || 0) / 100;
   p.stock = p.stock || p.inventory || 0;
 
@@ -387,24 +397,6 @@ function apply(){
   renderPage();
 }
 
-/* ================= PRODUCT LINK HELPERS ================= */
-// STEP 2 — helper สร้าง Product Link (ใช้ตอน render)
-function buildProductLink(p){
-  if(!p) return "";
-
-  // กรณีมี product_id ตรง
-  if(p.name){
-    return `https://shop.tiktok.com/view/product/${p.name}?region=TH&locale=th-TH&source=agency`;
-  }
-
-  // fallback: ถ้ามี product_url เต็มอยู่แล้ว
-  if(p.product_url && p.product_url.startsWith("http")){
-    return p.product_url;
-  }
-
-  return "";
-}
-
 /* ================= RENDER ================= */
 function render(list){
   tb.innerHTML = "";
@@ -433,9 +425,14 @@ function render(list){
       src="${p.image || 'https://via.placeholder.com/80'}">
   </td>
 
-  <!-- ชื่อสินค้า -->
+  <!-- Name -->
   <td>
     <b>${p.name}</b>
+  </td>
+
+  <!-- ID -->
+  <td>
+    <code>${(p.product_id || "").toString().replace(/[^\d]/g,"") || "-"}</code>
   </td>
 
   <!-- Product Link -->
