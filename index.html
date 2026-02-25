@@ -196,10 +196,36 @@ const IMPORT_PATH="/imports.json";
 
 /* ================= PRODUCT LINK ================= */
 function buildProductLink(p){
-  if(p.name){
-    return `https://shop.tiktok.com/view/product/${p.name}?region=TH&locale=th-TH&source=agency`;
+  const pid = p?.product_id || p?.productId || p?.pid || (typeof p?.name === 'string' && /^\d{10,}$/.test(p.name.trim()) ? p.name.trim() : '');
+  if(pid){
+    return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
+  }
+  // fallback: stored url
+  return p?.product_url || p?.url || "";
+}
+
+
+/* ================= PRODUCT TEXT HELPERS ================= */
+function isNumericIdText(s){
+  return typeof s === 'string' && /^\d{10,}$/.test(s.trim());
+}
+function getProductName(p){
+  const candidates = [p?.product_name, p?.title, p?.name];
+  for(const c of candidates){
+    const v = (c ?? '').toString().trim();
+    if(!v) continue;
+    if(isNumericIdText(v)) continue; // กันชื่อกลายเป็นเลข ID
+    return v;
   }
   return "";
+}
+function getProductId(p){
+  const v = (p?.product_id || p?.productId || p?.pid || "").toString().trim();
+  if(v) return v;
+  if(typeof p?.name === 'string' && isNumericIdText(p.name)) return p.name.trim(); // backward compat
+  const url = buildProductLink(p) || "";
+  const m = String(url).match(/product\/(\d+)/) || String(url).match(/\/(\d{15,})/);
+  return m ? m[1] : "";
 }
 
 /* ================= PAGINATION STATE ================= */
@@ -395,7 +421,7 @@ function buildProductLink(p){
 
   // กรณีมี product_id ตรง
   if(p.name){
-    return `https://shop.tiktok.com/view/product/${p.name}?region=TH&locale=th-TH&source=agency`;
+    return `https://shop.tiktok.com/view/product/${getProductName(p) || '-'}?region=TH&locale=th-TH&source=agency`;
   }
 
   // fallback: ถ้ามี product_url เต็มอยู่แล้ว
@@ -404,21 +430,6 @@ function buildProductLink(p){
   }
 
   return "";
-}
-
-
-/* ================= PRODUCT ID HELPERS ================= */
-function getProductId(p){
-  if(!p) return "";
-  if(p.product_id) return String(p.product_id);
-  if(p.productId) return String(p.productId);
-  if(p.pid) return String(p.pid);
-
-  if(typeof p.name === "string" && /^\d{10,}$/.test(p.name.trim())) return p.name.trim();
-
-  const url = buildProductLink(p) || p.product_url || p.url || "";
-  const m = String(url).match(/product\/(\d+)/) || String(url).match(/\/(\d{15,})/);
-  return m ? m[1] : "";
 }
 
 /* ================= RENDER ================= */
@@ -451,12 +462,7 @@ function render(list){
 
   <!-- ชื่อสินค้า -->
   <td>
-    <b>${p.name}</b>
-  </td>
-
-  <!-- ID สินค้า -->
-  <td>
-    <code style="font-size:12px">${getProductId(p) || "-"}</code>
+    <b>${getProductName(p) || '-'}</b>
   </td>
 
   <!-- Product Link -->
