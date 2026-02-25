@@ -221,7 +221,7 @@ const CAT_PATH = "/categories.json";
 let CATEGORIES = [];
 let DATA=[];
 
-async function loadCategories(){
+async async function loadCategories(){
   const r = await fetch(DB_ROOT + CAT_PATH);
   const j = await r.json();
   CATEGORIES = j
@@ -230,7 +230,7 @@ async function loadCategories(){
   renderCatManager();
 }
 
-async function addCategory(){
+async async function addCategory(){
   if(!catName.value || !catRegex.value) return;
 
   await fetch(DB_ROOT + "/categories.json",{
@@ -319,7 +319,7 @@ const FOI=p=>Math.min(100,Math.round(sellScore(p)*0.4+feedScore(p)*0.6));
 const roiScore=p=>Math.round(p.foi*0.7);
 
 /* ================= LOAD ================= */
-async function load(){
+async async function load(){
   const r=await fetch(DB_ROOT+IMPORT_PATH);
   const j=await r.json();
   if(!j)return;
@@ -555,14 +555,14 @@ function sendToGPT(){
 }
 
 /* ================= CLEAR ================= */
-async function clearData(){
+async async function clearData(){
   if(!confirm("ลบข้อมูลทั้งหมด?"))return;
   await fetch(DB_ROOT+IMPORT_PATH,{method:"DELETE"});
   DATA=[];reload();
 }
 
 /* ================= INIT ================= */
-async function init(){
+async async function init(){
   await loadCategories(); // โหลดหมวดก่อน
   await load();           // แล้วค่อยโหลดสินค้า
 }
