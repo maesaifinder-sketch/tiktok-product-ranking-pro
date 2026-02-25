@@ -152,7 +152,8 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <th>เลือก</th>
   <th>#</th>
   <th>รูป</th>
-  <th>ชื่อ/ID</th>
+  <th>ชื่อสินค้า</th>
+  <th>ID</th>
   <th>Product Link</th>
   <th>ราคา</th>
   <th>Feed</th>
@@ -405,6 +406,21 @@ function buildProductLink(p){
   return "";
 }
 
+
+/* ================= PRODUCT ID HELPERS ================= */
+function getProductId(p){
+  if(!p) return "";
+  if(p.product_id) return String(p.product_id);
+  if(p.productId) return String(p.productId);
+  if(p.pid) return String(p.pid);
+
+  if(typeof p.name === "string" && /^\d{10,}$/.test(p.name.trim())) return p.name.trim();
+
+  const url = buildProductLink(p) || p.product_url || p.url || "";
+  const m = String(url).match(/product\/(\d+)/) || String(url).match(/\/(\d{15,})/);
+  return m ? m[1] : "";
+}
+
 /* ================= RENDER ================= */
 function render(list){
   tb.innerHTML = "";
@@ -436,6 +452,11 @@ function render(list){
   <!-- ชื่อสินค้า -->
   <td>
     <b>${p.name}</b>
+  </td>
+
+  <!-- ID สินค้า -->
+  <td>
+    <code style="font-size:12px">${getProductId(p) || "-"}</code>
   </td>
 
   <!-- Product Link -->
