@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -195,6 +195,7 @@ function digitsOnly(s){
   const m = String(s || "").match(/\d+/g);
   return m ? m.join("") : "";
 }
+
 const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
 
@@ -280,14 +281,14 @@ function reassignCategories(){
   DATA.forEach(p=>{
 
     // 🛡️ กันพัง: ถ้าไม่มีชื่อสินค้า
-    if(!p || !getProductName(p)){
+    if(!p || !p.name){
       p.category = "อื่นๆ";
       return;
     }
 
     const found = CATEGORIES.find(c=>{
       try{
-        return new RegExp(c.regex,"i").test(getProductName(p));
+        return new RegExp(c.regex,"i").test(p.name);
       }catch(e){
         return false;
       }
@@ -326,24 +327,15 @@ async function load(){
     (b.items||[]).forEach(p=>{
 
   // normalize field
-  // normalize field
-// ✅ ${pid} = product Name
-p.pid = p.pid || p.product_name || p.title || "";
+  p.name  = p.name || p.title || p.product_name || p.product_id;
+  p.price = Number(p.price || 0) / 100;
+  p.stock = p.stock || p.inventory || 0;
 
-// ✅ ${p.name} = Product ID (digits only)
-p.name = digitsOnly(p.name || p.product_id || p.productId || "");
-
-// เผื่อยังใช้ field เดิมที่อื่น
-p.product_name = p.product_name || p.pid;
-
-p.price = Number(p.price || 0) / 100;
-p.stock = p.stock || p.inventory || 0;
-
-p.shop  = p.shop || "-";
-p.sell  = sellScore(p);
-p.feed  = feedScore(p);
-p.foi   = FOI(p);
-p.roi   = roiScore(p);
+  p.shop  = p.shop || "-";
+  p.sell  = sellScore(p);
+  p.feed  = feedScore(p);
+  p.foi   = FOI(p);
+  p.roi   = roiScore(p);
 
   DATA.push(p);
 });
@@ -389,10 +381,7 @@ function filterCat(){
 }
 function apply(){
   const q=search.value.toLowerCase(),c=catFilter.value;
-  FILTERED_DATA=DATA.filter(p=>{
-    const n=(getProductName(p)||"").toLowerCase();
-    return (!q||n.includes(q)) && (!c||p.category===c);
-  });
+  FILTERED_DATA=DATA.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!c||p.category===c));
   CURRENT_PAGE=1;
   renderPage();
 }
@@ -402,26 +391,27 @@ function apply(){
 function buildProductLink(p){
   if(!p) return "";
 
-  // กรณีมี product_id ตรง (p.name = Product ID)
+  // กรณีมี product_id ตรง (p.name = Product ID) — ดึงเฉพาะตัวเลข
   const pid = digitsOnly(p.name);
   if(pid){
     return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
   }
 
   // fallback: ถ้ามี product_url เต็มอยู่แล้ว
-  if(p.product_url && p.product_url.startsWith("http")){
+  if(p.product_url && String(p.product_url).startsWith("http")){
     return p.product_url;
   }
 
   return "";
 }
 
+
+
 function getProductName(p){
   return (p?.pid || p?.product_name || p?.title || "").toString().trim();
 }
 
 /* ================= PRODUCT ID HELPERS ================= */
-
 function getProductId(p){
   if(!p) return "";
   const v = digitsOnly(p.name);
@@ -466,7 +456,7 @@ function render(list){
 
   <!-- ชื่อสินค้า -->
   <td>
-    <b>${getProductName(p) || "-"}</b>
+    <b>${p.name}</b>
   </td>
 
   <!-- ID สินค้า -->
@@ -556,8 +546,8 @@ function buildGPT(){
     : FILTERED_DATA.slice(0,10);
 
   gptPrompt.value = list.map((p,i)=>
-  `${i+1}. ${getProductName(p) || "-"} | id:${getProductId(p) || "-"} | link:${buildProductLink(p)} | FOI:${p.foi || 0}`
-).join("\n");
+    `${i+1}. ${p.name || "-"} | link:${buildProductLink(p)} | FOI:${p.foi || 0}`
+  ).join("\n");
 }
 function sendToGPT(){
   navigator.clipboard.writeText(gptPrompt.value)
