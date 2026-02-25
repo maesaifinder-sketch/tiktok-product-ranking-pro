@@ -152,8 +152,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <th>เลือก</th>
   <th>#</th>
   <th>รูป</th>
-  <th>ชื่อสินค้า</th>
-  <th>ID</th>
+  <th>ชื่อ/ID</th>
   <th>Product Link</th>
   <th>ราคา</th>
   <th>Feed</th>
@@ -221,7 +220,7 @@ const CAT_PATH = "/categories.json";
 let CATEGORIES = [];
 let DATA=[];
 
-async async function loadCategories(){
+async function loadCategories(){
   const r = await fetch(DB_ROOT + CAT_PATH);
   const j = await r.json();
   CATEGORIES = j
@@ -230,7 +229,7 @@ async async function loadCategories(){
   renderCatManager();
 }
 
-async async function addCategory(){
+async function addCategory(){
   if(!catName.value || !catRegex.value) return;
 
   await fetch(DB_ROOT + "/categories.json",{
@@ -319,7 +318,7 @@ const FOI=p=>Math.min(100,Math.round(sellScore(p)*0.4+feedScore(p)*0.6));
 const roiScore=p=>Math.round(p.foi*0.7);
 
 /* ================= LOAD ================= */
-async async function load(){
+async function load(){
   const r=await fetch(DB_ROOT+IMPORT_PATH);
   const j=await r.json();
   if(!j)return;
@@ -393,36 +392,17 @@ function apply(){
 function buildProductLink(p){
   if(!p) return "";
 
-  const pid = digitsOnly(p.name); // Product ID (digits only)
-  if(pid){
-    return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
+  // กรณีมี product_id ตรง
+  if(p.name){
+    return `https://shop.tiktok.com/view/product/${p.name}?region=TH&locale=th-TH&source=agency`;
   }
 
-  if(p.product_url && String(p.product_url).startsWith("http")){
+  // fallback: ถ้ามี product_url เต็มอยู่แล้ว
+  if(p.product_url && p.product_url.startsWith("http")){
     return p.product_url;
   }
 
   return "";
-}
-
-
-
-function getProductName(p){
-  return (p?.pid || p?.product_name || p?.title || "").toString().trim();
-}
-
-/* ================= PRODUCT ID HELPERS ================= */
-function getProductId(p){
-  if(!p) return "";
-  if(p.product_id) return String(p.product_id);
-  if(p.productId) return String(p.productId);
-  if(p.pid) return String(p.pid);
-
-  if(typeof p.name === "string" && /^\d{10,}$/.test(p.name.trim())) return p.name.trim();
-
-  const url = buildProductLink(p) || p.product_url || p.url || "";
-  const m = String(url).match(/product\/(\d+)/) || String(url).match(/\/(\d{15,})/);
-  return m ? m[1] : "";
 }
 
 /* ================= RENDER ================= */
@@ -455,12 +435,7 @@ function render(list){
 
   <!-- ชื่อสินค้า -->
   <td>
-    <b>${getProductName(p) || "-"}</b>
-  </td>
-
-  <!-- ID สินค้า -->
-  <td>
-    <code style="font-size:12px">${getProductId(p) || "-"}</code>
+    <b>${p.name}</b>
   </td>
 
   <!-- Product Link -->
@@ -555,14 +530,14 @@ function sendToGPT(){
 }
 
 /* ================= CLEAR ================= */
-async async function clearData(){
+async function clearData(){
   if(!confirm("ลบข้อมูลทั้งหมด?"))return;
   await fetch(DB_ROOT+IMPORT_PATH,{method:"DELETE"});
   DATA=[];reload();
 }
 
 /* ================= INIT ================= */
-async async function init(){
+async function init(){
   await loadCategories(); // โหลดหมวดก่อน
   await load();           // แล้วค่อยโหลดสินค้า
 }
