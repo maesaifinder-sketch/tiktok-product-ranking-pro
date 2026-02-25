@@ -152,8 +152,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <th>เลือก</th>
   <th>#</th>
   <th>รูป</th>
-  <th>ชื่อสินค้า</th>
-  <th>ID</th>
+  <th>ชื่อ/ID</th>
   <th>Product Link</th>
   <th>ราคา</th>
   <th>Feed</th>
@@ -196,38 +195,10 @@ const IMPORT_PATH="/imports.json";
 
 /* ================= PRODUCT LINK ================= */
 function buildProductLink(p){
-  const pid = getProductId(p);
-  if(pid){
-    return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
-  }
-  // fallback: stored url
-  if(p?.product_url && String(p.product_url).startsWith("http")) return p.product_url;
-  if(p?.url && String(p.url).startsWith("http")) return p.url;
-  return "";
-}
-
-
-/* ================= PRODUCT TEXT HELPERS ================= */
-function isNumericIdText(s){
-  return typeof s === 'string' && /^\d{10,}$/.test(s.trim());
-}
-function getProductName(p){
-  const candidates = [p?.product_name, p?.title, p?.name];
-  for(const c of candidates){
-    const v = (c ?? '').toString().trim();
-    if(!v) continue;
-    if(isNumericIdText(v)) continue; // กันชื่อกลายเป็นเลข ID
-    return v;
+  if(p.name){
+    return `https://shop.tiktok.com/view/product/${p.name}?region=TH&locale=th-TH&source=agency`;
   }
   return "";
-}
-function getProductId(p){
-  const v = (p?.product_id || p?.productId || p?.pid || "").toString().trim();
-  if(v) return v;
-  if(typeof p?.name === 'string' && isNumericIdText(p.name)) return p.name.trim(); // backward compat
-  const url = buildProductLink(p) || "";
-  const m = String(url).match(/product\/(\d+)/) || String(url).match(/\/(\d{15,})/);
-  return m ? m[1] : "";
 }
 
 /* ================= PAGINATION STATE ================= */
@@ -423,7 +394,7 @@ function buildProductLink(p){
 
   // กรณีมี product_id ตรง
   if(p.name){
-    return `https://shop.tiktok.com/view/product/${getProductName(p) || '-'}?region=TH&locale=th-TH&source=agency`;
+    return `https://shop.tiktok.com/view/product/${p.name}?region=TH&locale=th-TH&source=agency`;
   }
 
   // fallback: ถ้ามี product_url เต็มอยู่แล้ว
@@ -464,12 +435,7 @@ function render(list){
 
   <!-- ชื่อสินค้า -->
   <td>
-    <b>${getProductName(p) || '-'}</b>
-  </td>
-
-  <!-- ID สินค้า -->
-  <td>
-    <code style="font-size:12px">${getProductId(p) || '-'}</code>
+    <b>${p.name}</b>
   </td>
 
   <!-- Product Link -->
