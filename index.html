@@ -336,7 +336,7 @@ async function load(){
     (b.items||[]).forEach(p=>{
 
   // normalize field
-  p.product_id = (p.product_id || p.pid || p.id_num || p.productId || "").toString().replace(/[^\\d]/g,"");
+  p.product_id = (p.product_id || p.pid || p.id_num || p.productId || "").toString().replace(/[^\d]/g,"");
   p.name  = p.name || p.title || p.product_name || "-";
   if(p.name === "-" && p.product_id) p.name = "Product " + p.product_id;
   p.price = Number(p.price || 0) / 100;
