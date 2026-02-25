@@ -196,12 +196,14 @@ const IMPORT_PATH="/imports.json";
 
 /* ================= PRODUCT LINK ================= */
 function buildProductLink(p){
-  const pid = p?.product_id || p?.productId || p?.pid || (typeof p?.name === 'string' && /^\d{10,}$/.test(p.name.trim()) ? p.name.trim() : '');
+  const pid = getProductId(p);
   if(pid){
     return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
   }
   // fallback: stored url
-  return p?.product_url || p?.url || "";
+  if(p?.product_url && String(p.product_url).startsWith("http")) return p.product_url;
+  if(p?.url && String(p.url).startsWith("http")) return p.url;
+  return "";
 }
 
 
@@ -463,6 +465,11 @@ function render(list){
   <!-- ชื่อสินค้า -->
   <td>
     <b>${getProductName(p) || '-'}</b>
+  </td>
+
+  <!-- ID สินค้า -->
+  <td>
+    <code style="font-size:12px">${getProductId(p) || '-'}</code>
   </td>
 
   <!-- Product Link -->
