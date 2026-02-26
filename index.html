@@ -201,6 +201,12 @@ function buildProductLink(p){
   return "";
 }
 
+/* ================= IMAGE LINK (HI-RES) ================= */
+function getHiResImage(url){
+  if(!url) return "";
+  return url.replace(/resize-jpeg:\d+:\d+/i, "resize-jpeg:800:800");
+}
+
 /* ================= PAGINATION STATE ================= */
 let CURRENT_PAGE=1;
 let PAGE_SIZE=20;
@@ -434,8 +440,21 @@ function render(list){
 
   <!-- รูป -->
   <td>
-    <img class="thumb"
-      src="${p.image || 'https://via.placeholder.com/80'}">
+    ${(() => {
+      const img = p.image || 'https://via.placeholder.com/80';
+      const hasReal = !!p.image;
+      const hi = hasReal ? getHiResImage(p.image) : '';
+      return `
+        <img class="thumb" src="${img}">
+        <div style="margin-top:6px">
+          ${hasReal ? `
+            <a href="${hi}" target="_blank" class="product-btn" style="font-size:11px;padding:3px 8px">
+              🖼 เปิดรูปใหญ่
+            </a>
+          ` : `<span style=\"color:#64748b;font-size:11px\">-</span>`}
+        </div>
+      `;
+    })()}
   </td>
 
   <!-- Name -->
