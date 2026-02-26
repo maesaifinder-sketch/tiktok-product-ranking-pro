@@ -28,136 +28,581 @@ textarea{width:100%;min-height:160px}
 small{color:#64748b}
 hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
+/* CATEGORY SCROLL */
+.cat-scroll{max-height:260px;overflow-y:auto;padding-right:6px}
+.cat-item{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+
 .thumb{
-  width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;
-  cursor:pointer;transition:.15s;
+  width:48px;
+  height:48px;
+  object-fit:cover;
+  border-radius:8px;
+  border:1px solid #e5e7eb;
+  cursor:pointer;
+  transition:.15s;
 }
-.thumb:hover{transform:scale(2);z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.2);}
+
+.thumb:hover{
+  transform:scale(2);
+  z-index:10;
+  box-shadow:0 8px 24px rgba(0,0,0,.2);
+}
+
+/* ===== Kalodata Pagination ===== */
+.pagination{
+  display:flex;
+  gap:6px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.page-btn{
+  min-width:36px;
+  padding:6px 10px;
+  border-radius:8px;
+  border:1px solid #cbd5f5;
+  background:#fff;
+  cursor:pointer;
+  font-weight:600;
+  color:#020617; /* 👈 เพิ่มบรรทัดนี้ */
+}
+
+.page-btn.active{
+  background:#020617;
+  color:#fff; /* 👈 ระบุชัด */
+}
+.page-btn.active{
+  background:#020617;
+  color:#fff;
+}
+.page-btn:disabled{
+  opacity:.4;
+  cursor:not-allowed;
+}
+.page-info{
+  font-size:14px;
+  color:#64748b;
+}
+.product-btn{
+  display:inline-block;
+  padding:4px 10px;
+  font-size:12px;
+  font-weight:600;
+  border-radius:999px;
+  background:#ecfeff;
+  color:#0369a1;
+  border:1px solid #67e8f9;
+  text-decoration:none;
+}
+.product-btn:hover{
+  background:#cffafe;
+}
+
 
 .dl-btn{
-  margin-top:6px;width:100%;padding:6px 10px;font-size:12px;font-weight:700;
-  border-radius:10px;border:1px solid #cbd5f5;background:#fff;color:#020617;cursor:pointer;
+  margin-top:6px;
+  width:100%;
+  padding:6px 10px;
+  font-size:12px;
+  font-weight:700;
+  border-radius:10px;
+  border:1px solid #cbd5f5;
+  background:#ffffff;
+  color:#020617;
+  cursor:pointer;
 }
 .dl-btn:hover{background:#f8fafc}
 
-.pagination{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.page-btn{min-width:36px;padding:6px 10px;border-radius:8px;border:1px solid #cbd5f5;background:#fff;cursor:pointer;font-weight:600;color:#020617}
-.page-btn.active{background:#020617;color:#fff}
-.page-btn:disabled{opacity:.4;cursor:not-allowed}
-.page-info{font-size:14px;color:#64748b}
-.product-btn{display:inline-block;padding:4px 10px;font-size:12px;font-weight:600;border-radius:999px;background:#ecfeff;color:#0369a1;border:1px solid #67e8f9;text-decoration:none}
-.product-btn:hover{background:#cffafe}
 </style>
 </head>
 
 <body>
+
 <header>
   <h1>🚀 Index PRO+ – Feed Opportunity Index</h1>
   <small>Kalodata-style | Affiliate Intelligence | No API</small>
 </header>
 
 <div class="container">
-  <div class="card">
-    <input id="search" placeholder="ค้นหาสินค้า">
-    <button onclick="apply()">Filter</button>
-  </div>
 
-  <br>
+<!-- DASHBOARD -->
+<div class="grid">
+  <div class="card"><h3>📦 สินค้าทั้งหมด</h3><div class="stat" id="total">0</div></div>
+  <div class="card"><h3>🚀 FOI ≥ 75</h3><div class="stat" id="easy">0</div></div>
+  <div class="card"><h3>💰 ROI สูง</h3><div class="stat" id="roiHigh">0</div></div>
+  <div class="card"><h3>🔥 หมวดมาแรง</h3><div class="stat" id="topCat">-</div></div>
+</div>
 
-  <div class="card">
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>รูป</th>
-          <th>Name</th>
-          <th>ID</th>
-          <th>Product Link</th>
-        </tr>
-      </thead>
-      <tbody id="tb"></tbody>
-    </table>
+<br>
+
+<!-- FILTER -->
+<div class="card">
+  <input id="search" placeholder="ค้นหาสินค้า">
+  <select id="catFilter"></select>
+  <button onclick="apply()">Filter</button>
+  <button class="secondary" onclick="exportCSV()">Export CSV</button>
+  <button class="secondary" onclick="selectPage()">☑️ ALL</button>
+  <button class="secondary" onclick="clearSelected()">❌ ล้างที่เลือก</button>
+  <button class="danger" onclick="clearData()">🧹 เคลียร์ข้อมูล</button>
+</div>
+
+<br>
+
+<!-- CATEGORY -->
+<div class="card">
+  <h3>🗂 จัดการหมวดหมู่</h3>
+  <input id="catName" placeholder="ชื่อหมวด">
+  <input id="catRegex" placeholder="Keyword / Regex">
+  <button onclick="addCategory()">➕ เพิ่มหมวด</button>
+  <hr>
+  <div id="catList" class="cat-scroll"></div>
+</div>
+
+<br>
+
+<!-- TABLE -->
+<div class="card">
+<table>
+<thead>
+<tr>
+  <th>เลือก</th>
+  <th>#</th>
+  <th>รูป</th>
+  <th>Name</th>
+  <th>ID</th>
+  <th>Product Link</th>
+</tr>
+</thead>
+<tbody id="tb"></tbody>
+</table>
+
+<!-- Pagination -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+  <div class="pagination" id="pagination"></div>
+  <div class="page-info">
+    แสดง
+    <select id="pageSize" onchange="changePageSize()">
+      <option>20</option>
+      <option>50</option>
+      <option>100</option>
+    </select>
+    รายการ / หน้า
   </div>
+</div>
+</div>
+
+<br>
+
+<!-- GPT -->
+<div class="card">
+  <h3>🧠 Send to GPT</h3>
+  <textarea id="gptPrompt"></textarea>
+  <button onclick="sendToGPT()">📤 Copy Text</button>
+</div>
+
 </div>
 
 <script>
+/* ================= CONFIG ================= */
 const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
-let DATA=[]; let FILTERED_DATA=[];
 
+
+
+
+
+/* ================= IMAGE SIZE UPGRADE ================= */
+// แปลง URL รูปแบบ ...resize-jpeg:300:300.jpeg -> ...resize-jpeg:800:800.jpeg (รองรับ jpeg/jpg/png/webp)
+// ถ้าแปลงไม่ได้ จะคืนค่า url เดิม
 function to800(url){
   if(!url) return "";
-  const up = url.replace(/(resize-[a-z]+):\\d+:\\d+\\.(jpeg|jpg|png|webp)/i, "$1:800:800.$2");
+  const up = url.replace(/(resize-[a-z]+):\d+:\d+\.(jpeg|jpg|png|webp)/i, "$1:800:800.$2");
   return up === url ? url : up;
 }
 
+/* ================= IMAGE DOWNLOAD ================= */
+// ดาวน์โหลดรูป "ใหญ่สุด" ตามที่มีในข้อมูล (p.image) — ถ้าโหลดแบบ blob ไม่ได้เพราะ CORS จะ fallback เปิดรูปในแท็บใหม่
 async function downloadImage(url, filename){
-  if(!url){ alert("❌ ไม่พบลิงก์รูป"); return; }
-  const safeName = (filename || "image").replace(/[\\/:*?"<>|]+/g,"_");
+  if(!url){
+    alert("❌ ไม่พบลิงก์รูป");
+    return;
+  }
+  const safeName = (filename || "image").toString().replace(/[\/:*?"<>|]+/g,"_");
+
   try{
     const r = await fetch(url, { mode: "cors" });
     if(!r.ok) throw new Error("HTTP " + r.status);
     const blob = await r.blob();
+
     const a = document.createElement("a");
     const obj = URL.createObjectURL(blob);
-    a.href = obj; a.download = safeName;
-    document.body.appendChild(a); a.click(); a.remove();
+    a.href = obj;
+    a.download = safeName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     URL.revokeObjectURL(obj);
   }catch(e){
+    // CORS มักบล็อคการ fetch รูปจาก CDN บางโดเมน → fallback
+    console.warn("Download blocked, fallback open:", e);
     window.open(url, "_blank", "noopener,noreferrer");
-    alert("ℹ️ ถ้าโหลดตรง ๆ ไม่ได้ ระบบจะเปิดรูป 800x800 ในแท็บใหม่ให้เซฟเอง");
+    alert("ℹ️ เบราว์เซอร์บล็อคการดาวน์โหลดตรง ๆ (CORS) จึงเปิดรูปในแท็บใหม่แทน — เซฟรูปจากแท็บนั้นได้");
   }
 }
 
+/* ================= PRODUCT LINK ================= */
 function buildProductLink(p){
   if(!p) return "";
-  const pid = (p.product_id || "").toString().replace(/[^\\d]/g,"");
-  return pid ? `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency` : "";
+  const pid = (p.product_id || p.productId || p.id || p.pid || "").toString().replace(/[^\d]/g,"");
+  if(pid){
+    return `https://shop.tiktok.com/view/product/${pid}?region=TH&locale=th-TH&source=agency`;
+  }
+  return "";
 }
 
-async function load(){
-  const r = await fetch(DB_ROOT + IMPORT_PATH);
+/* ================= PAGINATION STATE ================= */
+let CURRENT_PAGE=1;
+let PAGE_SIZE=20;
+let FILTERED_DATA=[];
+
+/* ================= SELECT STATE ================= */
+const SELECT_KEY = "INDEX_PRO_SELECTED";
+let SELECTED = new Set(JSON.parse(localStorage.getItem(SELECT_KEY) || "[]"));
+
+function saveSelected(){
+  localStorage.setItem(SELECT_KEY, JSON.stringify([...SELECTED]));
+}
+
+/* ================= CATEGORY ================= */
+const CAT_PATH = "/categories.json";
+
+let CATEGORIES = [];
+let DATA=[];
+
+async function loadCategories(){
+  const r = await fetch(DB_ROOT + CAT_PATH);
   const j = await r.json();
-  if(!j) return;
+  CATEGORIES = j
+  ? Object.entries(j).map(([id, c]) => ({ id, ...c }))
+  : [];
+  renderCatManager();
+}
+
+async function addCategory(){
+  if(!catName.value || !catRegex.value) return;
+
+  await fetch(DB_ROOT + "/categories.json",{
+    method:"POST",
+    body: JSON.stringify({
+      name: catName.value,
+      regex: catRegex.value
+    })
+  });
+
+  catName.value = catRegex.value = "";
+  await loadCategories();
+  reassignCategories();
+  saveProductsCategory();
+}
+
+async function removeCategory(id){
+  if(!confirm("⚠️ ต้องการลบหมวดหมู่นี้จริงหรือไม่?\nสินค้าที่อยู่ในหมวดนี้จะถูกจัดใหม่เป็น 'อื่นๆ'")){
+    return;
+  }
+
+  await fetch(DB_ROOT + "/categories/" + id + ".json", {
+    method: "DELETE"
+  });
+
+  await loadCategories();
+  reassignCategories();
+  saveProductsCategory();
+}
+
+/* ================= CATEGORY CRUD ================= */
+
+function renderCatManager(){
+  catList.innerHTML="";
+  CATEGORIES.forEach(c=>{
+    catList.innerHTML+=`
+      <div class="cat-item">
+        <div>
+          <b>${c.name}</b><br>
+          <small>${c.regex}</small>
+        </div>
+        <button class="danger" onclick="removeCategory('${c.id}')">
+          ลบ
+        </button>
+      </div>`;
+  });
+}
+
+function reassignCategories(){
+  DATA.forEach(p=>{
+
+    // 🛡️ กันพัง: ถ้าไม่มีชื่อสินค้า
+    if(!p || !p.name){
+      p.category = "อื่นๆ";
+      return;
+    }
+
+    const found = CATEGORIES.find(c=>{
+      try{
+        return new RegExp(c.regex,"i").test(p.name);
+      }catch(e){
+        return false;
+      }
+    });
+
+    p.category = found ? found.name : "อื่นๆ";
+  });
+}
+
+async function saveProductsCategory(){
+  for(const batch of Object.entries(DATA_BY_BATCH)){
+    const [batchId, batchData] = batch;
+    for(const [i,p] of batchData.items.entries()){
+      await fetch(
+        `${DB_ROOT}/imports/${batchId}/items/${i}/category.json`,
+        { method:"PUT", body: JSON.stringify(p.category) }
+      );
+    }
+  }
+}
+
+/* ================= SCORE ================= */
+const sellScore=p=>Math.round((p.avgViews||0)/1000);
+const feedScore=p=>Math.round((p.engagement||0)*30);
+const FOI=p=>Math.min(100,Math.round(sellScore(p)*0.4+feedScore(p)*0.6));
+const roiScore=p=>Math.round(p.foi*0.7);
+
+/* ================= LOAD ================= */
+async function load(){
+  const r=await fetch(DB_ROOT+IMPORT_PATH);
+  const j=await r.json();
+  if(!j)return;
   DATA=[];
+  
   Object.values(j).forEach(b=>{
     (b.items||[]).forEach(p=>{
-      p.product_id = (p.product_id || p.productId || "").toString().replace(/[^\\d]/g,"");
-      p.name = p.name || "-";
-      DATA.push(p);
-    });
+
+  // normalize field
+  // Name (ข้อความ) + Product ID (ตัวเลขล้วน)
+  const rawId = (p.product_id || p.productId || p.id || p.pid || p.productID || "");
+  const pid = rawId ? rawId.toString().replace(/[^\d]/g,"") : "";
+  p.product_id = pid;
+
+  p.name  = p.name || p.title || p.product_name || "-";
+  p.price = Number(p.price || 0) / 100;
+  p.stock = p.stock || p.inventory || 0;
+
+  p.shop  = p.shop || "-";
+  p.sell  = sellScore(p);
+  p.feed  = feedScore(p);
+  p.foi   = FOI(p);
+  p.roi   = roiScore(p);
+
+  DATA.push(p);
+});
   });
-  FILTERED_DATA=[...DATA];
-  render();
+  reassignCategories(); // ✅ เพิ่มบรรทัดนี้
+  reload();
 }
 
-function render(){
-  tb.innerHTML="";
-  FILTERED_DATA.forEach((p,i)=>{
-    const productLink = buildProductLink(p);
-    tb.innerHTML += `
+/* ================= UI ================= */
+
+function renderPage(){
+  const start = (CURRENT_PAGE - 1) * PAGE_SIZE;
+  const pageData = FILTERED_DATA.slice(start, start + PAGE_SIZE);
+
+  render(pageData);
+  renderPagination();
+}
+function reload(){
+  dashboard();
+  filterCat();
+  FILTERED_DATA=[...DATA];
+  CURRENT_PAGE=1;
+  renderPage();
+  buildGPT();
+}
+function dashboard(){
+  total.innerText=DATA.length;
+  easy.innerText=DATA.filter(p=>p.foi>=75).length;
+  roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
+  const c={};DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
+  topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
+}
+function filterCat(){
+  catFilter.innerHTML='<option value="">ทุกหมวด</option>';
+
+  [...new Set(
+    DATA
+      .filter(p=>p && p.category)
+      .map(p=>p.category)
+  )].forEach(c=>{
+    catFilter.innerHTML+=`<option>${c}</option>`;
+  });
+}
+function apply(){
+  const q=search.value.toLowerCase(),c=catFilter.value;
+  FILTERED_DATA=DATA.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!c||p.category===c));
+  CURRENT_PAGE=1;
+  renderPage();
+}
+
+/* ================= PRODUCT LINK HELPERS ================= */
+// STEP 2 — helper สร้าง Product Link (ใช้ตอน render)
+function buildProductLink(p){
+  if(!p) return "";
+
+  // กรณีมี product_id ตรง
+  if(p.name){
+    return `https://shop.tiktok.com/view/product/${p.product_id}?region=TH&locale=th-TH&source=agency`;
+  }
+
+  // fallback: ถ้ามี product_url เต็มอยู่แล้ว
+  if(p.product_url && p.product_url.startsWith("http")){
+    return p.product_url;
+  }
+
+  return "";
+}
+
+/* ================= RENDER ================= */
+function render(list){
+  tb.innerHTML = "";
+
+  list
+    .sort((a,b)=>b.foi-a.foi)
+    .forEach((p,i)=>{
+      const key = DATA.indexOf(p);
+      const checked = SELECTED.has(key) ? "checked" : "";
+      const productLink = buildProductLink(p);
+
+      tb.innerHTML += `
 <tr>
-  <td>#${i+1}</td>
+  <!-- เลือก -->
+  <td>
+    <input type="checkbox" ${checked}
+      onchange="toggleSelect(${key})">
+  </td>
+
+  <!-- # -->
+  <td>#${(CURRENT_PAGE-1)*PAGE_SIZE+i+1}</td>
+
+  <!-- รูป -->
   <td>
     <img class="thumb" src="${p.image || 'https://via.placeholder.com/80'}">
-    <button class="dl-btn" onclick='downloadImage(to800(${JSON.stringify(p.image || "")}), "${(p.product_id || "product")}_800.jpg")'>
+    <button class="dl-btn" onclick='downloadImage(to800(${JSON.stringify(p.image || \"\")}), ${JSON.stringify((p.product_id || \"product\") + \"_800.jpg\")});'>
       ⬇️ Download 800x800
     </button>
   </td>
-  <td><b>${p.name}</b></td>
-  <td><code>${p.product_id || "-"}</code></td>
-  <td>${productLink ? `<a href="${productLink}" target="_blank" class="product-btn">🔗 เปิดสินค้า</a>` : "-"}</td>
+
+  <!-- Name -->
+  <td>
+    <b>${p.name}</b>
+  </td>
+
+  <!-- ID -->
+  <td>
+    <code>${p.product_id || "-"}</code>
+  </td>
+
+  <!-- Product Link -->
+  <td>
+    ${productLink ? `
+      <a href="${productLink}" target="_blank" class="product-btn">
+        🔗 เปิดสินค้า
+      </a>
+    ` : "-"}
+  </td>
 </tr>`;
+    });
+}
+
+function toggleSelect(key){
+  if(SELECTED.has(key)) SELECTED.delete(key);
+  else SELECTED.add(key);
+  saveSelected();
+  buildGPT();
+}
+
+/* ================= PAGINATION UI ================= */
+function renderPagination(){
+  const totalPages=Math.ceil(FILTERED_DATA.length/PAGE_SIZE);
+  if(totalPages<=1){pagination.innerHTML="";return;}
+  let html=`<button class="page-btn" ${CURRENT_PAGE===1?"disabled":""} onclick="gotoPage(${CURRENT_PAGE-1})">‹</button>`;
+  let start=Math.max(1,CURRENT_PAGE-2);
+  let end=Math.min(totalPages,start+4);
+  if(start>1)html+=`<button class="page-btn" onclick="gotoPage(1)">1</button>…`;
+  for(let i=start;i<=end;i++){
+    html+=`<button class="page-btn ${i===CURRENT_PAGE?"active":""}" onclick="gotoPage(${i})">${i}</button>`;
+  }
+  if(end<totalPages)html+=`…<button class="page-btn" onclick="gotoPage(${totalPages})">${totalPages}</button>`;
+  html+=`<button class="page-btn" ${CURRENT_PAGE===totalPages?"disabled":""} onclick="gotoPage(${CURRENT_PAGE+1})">›</button>`;
+  pagination.innerHTML=html;
+}
+function gotoPage(p){CURRENT_PAGE=p;renderPage();}
+function changePageSize(){PAGE_SIZE=parseInt(pageSize.value);CURRENT_PAGE=1;renderPage();}
+
+/* ================= SELECT ACTION ================= */
+function selectPage(){
+  const start = (CURRENT_PAGE - 1) * PAGE_SIZE;
+  const pageItems = FILTERED_DATA.slice(start, start + PAGE_SIZE);
+
+  pageItems.forEach(p=>{
+    const key = DATA.indexOf(p);
+    SELECTED.add(key);
   });
+
+  saveSelected();
+  renderPage();
+  buildGPT();
 }
 
-function apply(){
-  const q = search.value.toLowerCase();
-  FILTERED_DATA = DATA.filter(p => !q || p.name.toLowerCase().includes(q));
-  render();
+/* ================= CLEAR SELECTED ================= */
+function clearSelected(){
+  if(!SELECTED.size) return;
+
+  if(!confirm("ล้างสินค้าที่เลือกทั้งหมด?")) return;
+
+  SELECTED.clear();          // ล้าง Set
+  saveSelected();            // sync localStorage
+  renderPage();              // refresh checkbox
+  buildGPT();                // refresh GPT text
 }
 
-load();
+/* ================= GPT ================= */
+function buildGPT(){
+  const list = SELECTED.size
+    ? [...SELECTED].map(i => DATA[i]).filter(Boolean)
+    : FILTERED_DATA.slice(0,10);
+
+  gptPrompt.value = list.map((p,i)=>
+    `${i+1}. ${p.name || "-"} | link:${buildProductLink(p)} | FOI:${p.foi || 0}`
+  ).join("\n");
+}
+function sendToGPT(){
+  navigator.clipboard.writeText(gptPrompt.value)
+    .then(()=>alert("📋 คัดลอก Prompt แล้ว"))
+    .catch(()=>alert("❌ ไม่สามารถคัดลอกได้"));
+}
+
+/* ================= CLEAR ================= */
+async function clearData(){
+  if(!confirm("ลบข้อมูลทั้งหมด?"))return;
+  await fetch(DB_ROOT+IMPORT_PATH,{method:"DELETE"});
+  DATA=[];reload();
+}
+
+/* ================= INIT ================= */
+async function init(){
+  await loadCategories(); // โหลดหมวดก่อน
+  await load();           // แล้วค่อยโหลดสินค้า
+}
+
+init();
 </script>
+
 </body>
 </html>
