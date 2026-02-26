@@ -97,21 +97,6 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   background:#cffafe;
 }
 
-
-.dl-btn{
-  margin-top:6px;
-  width:100%;
-  padding:6px 10px;
-  font-size:12px;
-  font-weight:700;
-  border-radius:10px;
-  border:1px solid #cbd5f5;
-  background:#ffffff;
-  color:#020617;
-  cursor:pointer;
-}
-.dl-btn:hover{background:#f8fafc}
-
 </style>
 </head>
 
@@ -205,49 +190,6 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 /* ================= CONFIG ================= */
 const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
-
-
-
-
-
-/* ================= IMAGE SIZE UPGRADE ================= */
-// แปลง URL รูปแบบ ...resize-jpeg:300:300.jpeg -> ...resize-jpeg:800:800.jpeg (รองรับ jpeg/jpg/png/webp)
-// ถ้าแปลงไม่ได้ จะคืนค่า url เดิม
-function to800(url){
-  if(!url) return "";
-  const up = url.replace(/(resize-[a-z]+):\d+:\d+\.(jpeg|jpg|png|webp)/i, "$1:800:800.$2");
-  return up === url ? url : up;
-}
-
-/* ================= IMAGE DOWNLOAD ================= */
-// ดาวน์โหลดรูป "ใหญ่สุด" ตามที่มีในข้อมูล (p.image) — ถ้าโหลดแบบ blob ไม่ได้เพราะ CORS จะ fallback เปิดรูปในแท็บใหม่
-async function downloadImage(url, filename){
-  if(!url){
-    alert("❌ ไม่พบลิงก์รูป");
-    return;
-  }
-  const safeName = (filename || "image").toString().replace(/[\/:*?"<>|]+/g,"_");
-
-  try{
-    const r = await fetch(url, { mode: "cors" });
-    if(!r.ok) throw new Error("HTTP " + r.status);
-    const blob = await r.blob();
-
-    const a = document.createElement("a");
-    const obj = URL.createObjectURL(blob);
-    a.href = obj;
-    a.download = safeName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(obj);
-  }catch(e){
-    // CORS มักบล็อคการ fetch รูปจาก CDN บางโดเมน → fallback
-    console.warn("Download blocked, fallback open:", e);
-    window.open(url, "_blank", "noopener,noreferrer");
-    alert("ℹ️ เบราว์เซอร์บล็อคการดาวน์โหลดตรง ๆ (CORS) จึงเปิดรูปในแท็บใหม่แทน — เซฟรูปจากแท็บนั้นได้");
-  }
-}
 
 /* ================= PRODUCT LINK ================= */
 function buildProductLink(p){
@@ -492,10 +434,8 @@ function render(list){
 
   <!-- รูป -->
   <td>
-    <img class="thumb" src="${p.image || 'https://via.placeholder.com/80'}">
-    <button class="dl-btn" onclick='downloadImage(to800(${JSON.stringify(p.image || \"\")}), ${JSON.stringify((p.product_id || \"product\") + \"_800.jpg\")});'>
-      ⬇️ Download 800x800
-    </button>
+    <img class="thumb"
+      src="${p.image || 'https://via.placeholder.com/80'}">
   </td>
 
   <!-- Name -->
