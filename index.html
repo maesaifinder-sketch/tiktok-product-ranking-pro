@@ -181,7 +181,10 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <div class="card">
   <h3>🧠 Send to GPT</h3>
   <textarea id="gptPrompt"></textarea>
-  <button onclick="sendToGPT()">📤 Copy Text</button>
+  <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
+    <button onclick="sendToGPT()">📤 Copy Text</button>
+    <button class="secondary" onclick="exportGPTCSV()">⬇️ Export CSV</button>
+  </div>
 </div>
 
 </div>
@@ -538,13 +541,47 @@ function buildGPT(){
     : FILTERED_DATA.slice(0,10);
 
   gptPrompt.value = list.map((p,i)=>
-    `${i+1}. ${p.name || "-"} | ${getHiResImage(p.image)} | ${p.product_id || 0}`
+    `${i+1}. ${p.name || "-"} | link:${getHiResImage(p.image)} | ${p.product_id || 0}`
   ).join("\n");
 }
 function sendToGPT(){
   navigator.clipboard.writeText(gptPrompt.value)
     .then(()=>alert("📋 คัดลอก Prompt แล้ว"))
     .catch(()=>alert("❌ ไม่สามารถคัดลอกได้"));
+}
+
+
+
+function exportGPTCSV(){
+  // สร้างรายการเหมือนที่ใช้ใน buildGPT()
+  const list = SELECTED.size
+    ? [...SELECTED].map(i => DATA[i]).filter(Boolean)
+    : FILTERED_DATA.slice(0,10);
+
+  const headers = ["Title","ImageURL","ProductID"];
+
+  // ใส่ BOM เพื่อให้ Excel อ่านภาษาไทยได้ถูก
+  let csv = "\ufeff" + headers.join(",") + "\n";
+
+  list.forEach((p,i)=>{
+    const title = `${i+1}. ${p?.name || "-"}`.replace(/"/g,'""');
+    const imageUrl = (p?.image ? getHiResImage(p.image) : "").replace(/"/g,'""');
+    const productId = (p?.product_id || "").toString().replace(/"/g,'""');
+
+    csv += `"${title}","${imageUrl}","${productId}"\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "output.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  URL.revokeObjectURL(url);
 }
 
 /* ================= CLEAR ================= */
