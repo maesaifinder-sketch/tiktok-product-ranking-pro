@@ -538,7 +538,7 @@ function buildGPT(){
     : FILTERED_DATA.slice(0,10);
 
   gptPrompt.value = list.map((p,i)=>
-    `${i+1}. ${p.name || "-"} | ${hi} | ${pid || 0}`
+    `${i+1}. ${p.name || "-"} | ${hi} | ${pid}`
   ).join("\n");
 }
 function sendToGPT(){
