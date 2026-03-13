@@ -534,37 +534,35 @@ function clearSelected(){
   buildGPT();                // refresh GPT text
 }
 
+function cleanForGPT(text){
+  return (text || "").replace(/ร้านค้าของคุณ/g, "").trim();
+}
+
 /* ================= GPT ================= */
+function cleanForGPT(text){
+  return (text || "").replace(/ร้านค้าของคุณ/g, "").trim();
+}
+
 function buildGPT(){
   const list = SELECTED.size
     ? [...SELECTED].map(i => DATA[i]).filter(Boolean)
     : FILTERED_DATA.slice(0,10);
 
   gptPrompt.value = list.map((p,i)=>
-    `${i+1}. ${p.name || "-"} | link:${getHiResImage(p.image)} | ${p.product_id || 0}`
+    `${i+1}. ${cleanForGPT(p.name) || "-"} | link:${getHiResImage(p.image)} | ${p.product_id || 0}`
   ).join("\n");
 }
-function sendToGPT(){
-  navigator.clipboard.writeText(gptPrompt.value)
-    .then(()=>alert("📋 คัดลอก Prompt แล้ว"))
-    .catch(()=>alert("❌ ไม่สามารถคัดลอกได้"));
-}
-
-
 
 function exportGPTCSV(){
-  // สร้างรายการเหมือนที่ใช้ใน buildGPT()
   const list = SELECTED.size
     ? [...SELECTED].map(i => DATA[i]).filter(Boolean)
     : FILTERED_DATA.slice(0,10);
 
   const headers = ["Title","ImageURL","ProductID"];
-
-  // ใส่ BOM เพื่อให้ Excel อ่านภาษาไทยได้ถูก
   let csv = "\ufeff" + headers.join(",") + "\n";
 
   list.forEach((p,i)=>{
-    const title = `${i+1}. ${p?.name || "-"}`.replace(/"/g,'""');
+    const title = `${i+1}. ${cleanForGPT(p?.name) || "-"}`.replace(/"/g,'""');
     const imageUrl = (p?.image ? getHiResImage(p.image) : "").replace(/"/g,'""');
     const productId = (p?.product_id || "").toString().replace(/"/g,'""');
 
