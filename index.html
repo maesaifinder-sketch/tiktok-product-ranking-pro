@@ -183,6 +183,24 @@ onclick="switchDB('tikbed')">
 
 </button>
 
+<button
+id="db_health"
+class="db-btn"
+onclick="switchDB('health')">
+
+🥦 Health
+
+</button>
+
+<button
+id="db_snack"
+class="db-btn"
+onclick="switchDB('snack')">
+
+🥯 Snack
+
+</button>
+
 </div>
 
 <br>
@@ -260,7 +278,19 @@ const DATABASES = {
   tikbed:{
     name:"TikBed",
     url:"https://tikbedmarket-default-rtdb.asia-southeast1.firebasedatabase.app"
+  },
+  
+  health:{
+    name:"Health",
+    url:"https://tikbedmarket-default-rtdb.asia-southeast1.firebasedatabase.app"
+  },
+
+  snack:{
+    name:"Snack",
+    url:"https://tikbedmarket-default-rtdb.asia-southeast1.firebasedatabase.app"
   }
+};
+
 };
 
 let ACTIVE_DB_KEY =
