@@ -48,6 +48,26 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   box-shadow:0 8px 24px rgba(0,0,0,.2);
 }
 
+.db-menu{
+display:flex;
+gap:12px;
+flex-wrap:wrap;
+}
+
+.db-btn{
+padding:12px 18px;
+font-weight:700;
+border:none;
+border-radius:12px;
+cursor:pointer;
+background:#64748b;
+color:white;
+}
+
+.db-btn.active{
+background:#020617;
+}
+
 /* ===== Kalodata Pagination ===== */
 .pagination{
   display:flex;
@@ -103,7 +123,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 <body>
 
 <header>
-  <h1>🚀 CozyNest – Feed Opportunity Index</h1>
+  <h1>🚀 Index PRO+ – Feed Opportunity Index</h1>
   <small>Kalodata-style | Affiliate Intelligence | No API</small>
 </header>
 
@@ -124,7 +144,6 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <input id="search" placeholder="ค้นหาสินค้า">
   <select id="catFilter"></select>
   <button onclick="apply()">Filter</button>
-  <button class="secondary" onclick="exportCSV()">Export CSV</button>
   <button class="secondary" onclick="selectPage()">☑️ ALL</button>
   <button class="secondary" onclick="clearSelected()">❌ ล้างที่เลือก</button>
   <button class="danger" onclick="clearData()">🧹 เคลียร์ข้อมูล</button>
@@ -132,14 +151,51 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
 <br>
 
-<!-- CATEGORY -->
 <div class="card">
-  <h3>🗂 จัดการหมวดหมู่</h3>
-  <input id="catName" placeholder="ชื่อหมวด">
-  <input id="catRegex" placeholder="Keyword / Regex">
-  <button onclick="addCategory()">➕ เพิ่มหมวด</button>
-  <hr>
-  <div id="catList" class="cat-scroll"></div>
+
+<h3>🗂 พื้นที่ปุ่มเมนู</h3>
+
+<div class="db-menu">
+
+<button
+id="db_cozy"
+class="db-btn"
+onclick="switchDB('cozy')">
+
+🏠 CozyNest
+
+</button>
+
+<button
+id="db_bedstyle"
+class="db-btn"
+onclick="switchDB('bedstyle')">
+
+🛏️ BedStyle
+
+</button>
+
+<button
+id="db_tikbed"
+class="db-btn"
+onclick="switchDB('tikbed')">
+
+🔥 TikBed
+
+</button>
+
+</div>
+
+<br>
+
+<div>
+
+ฐานข้อมูลปัจจุบัน :
+
+<b id="currentDBLabel"></b>
+
+</div>
+
 </div>
 
 <br>
@@ -183,7 +239,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   <textarea id="gptPrompt"></textarea>
   <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
     <button onclick="sendToGPT()">📤 Copy Text</button>
-    <button class="secondary" onclick="exportGPTCSV()">⬇️ Export CSV</button>
+    
   </div>
 </div>
 
@@ -191,7 +247,29 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
 <script>
 /* ================= CONFIG ================= */
-const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
+const DATABASES = {
+  cozy:{
+    name:"CozyNest",
+    url:"https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app"
+  },
+
+  bedstyle:{
+    name:"BedStyle",
+    url:"https://bedstylemarket-default-rtdb.asia-southeast1.firebasedatabase.app"
+  },
+
+  tikbed:{
+    name:"TikBed",
+    url:"https://tikbedmarket-default-rtdb.asia-southeast1.firebasedatabase.app"
+  }
+};
+
+let ACTIVE_DB_KEY =
+localStorage.getItem("ACTIVE_DB_KEY") || "cozy";
+
+let DB_ROOT =
+DATABASES[ACTIVE_DB_KEY].url;
+
 const IMPORT_PATH="/imports.json";
 
 /* ================= PRODUCT LINK ================= */
@@ -216,75 +294,55 @@ let PAGE_SIZE=20;
 let FILTERED_DATA=[];
 
 /* ================= SELECT STATE ================= */
-const SELECT_KEY = "INDEX_PRO_SELECTED";
-let SELECTED = new Set(JSON.parse(localStorage.getItem(SELECT_KEY) || "[]"));
+function getSelectKey(){
+
+return
+"INDEX_PRO_SELECTED_" +
+ACTIVE_DB_KEY;
+
+}
+
+let SELECTED = new Set(JSON.parse(localStorage.getItem(
+getSelectKey()
+) || "[]"));
 
 function saveSelected(){
-  localStorage.setItem(SELECT_KEY, JSON.stringify([...SELECTED]));
+  localStorage.setItem(
+getSelectKey(), JSON.stringify([...SELECTED]));
 }
 
 /* ================= CATEGORY ================= */
-const CAT_PATH = "/categories.json";
+function getCategoryPath(){
+
+return
+"/categories_" +
+ACTIVE_DB_KEY +
+".json";
+
+}
 
 let CATEGORIES = [];
 let DATA=[];
 
 async function loadCategories(){
-  const r = await fetch(DB_ROOT + CAT_PATH);
-  const j = await r.json();
-  CATEGORIES = j
-  ? Object.entries(j).map(([id, c]) => ({ id, ...c }))
-  : [];
-  renderCatManager();
-}
+  try{
+    const r = await fetch(DB_ROOT + getCategoryPath());
+    const j = await r.json();
 
-async function addCategory(){
-  if(!catName.value || !catRegex.value) return;
+    CATEGORIES = j
+      ? Object.entries(j).map(([id,c])=>({id,...c}))
+      : [];
 
-  await fetch(DB_ROOT + "/categories.json",{
-    method:"POST",
-    body: JSON.stringify({
-      name: catName.value,
-      regex: catRegex.value
-    })
-  });
-
-  catName.value = catRegex.value = "";
-  await loadCategories();
-  reassignCategories();
-  saveProductsCategory();
-}
-
-async function removeCategory(id){
-  if(!confirm("⚠️ ต้องการลบหมวดหมู่นี้จริงหรือไม่?\nสินค้าที่อยู่ในหมวดนี้จะถูกจัดใหม่เป็น 'อื่นๆ'")){
-    return;
+  }catch(e){
+    console.warn("Category load fail",e);
+    CATEGORIES = [];
   }
-
-  await fetch(DB_ROOT + "/categories/" + id + ".json", {
-    method: "DELETE"
-  });
-
-  await loadCategories();
-  reassignCategories();
-  saveProductsCategory();
 }
 
 /* ================= CATEGORY CRUD ================= */
 
 function renderCatManager(){
-  catList.innerHTML="";
-  CATEGORIES.forEach(c=>{
-    catList.innerHTML+=`
-      <div class="cat-item">
-        <div>
-          <b>${c.name}</b><br>
-          <small>${c.regex}</small>
-        </div>
-        <button class="danger" onclick="removeCategory('${c.id}')">
-          ลบ
-        </button>
-      </div>`;
-  });
+  return;
 }
 
 function reassignCategories(){
@@ -308,23 +366,63 @@ function reassignCategories(){
   });
 }
 
-async function saveProductsCategory(){
-  for(const batch of Object.entries(DATA_BY_BATCH)){
-    const [batchId, batchData] = batch;
-    for(const [i,p] of batchData.items.entries()){
-      await fetch(
-        `${DB_ROOT}/imports/${batchId}/items/${i}/category.json`,
-        { method:"PUT", body: JSON.stringify(p.category) }
-      );
-    }
-  }
-}
-
 /* ================= SCORE ================= */
 const sellScore=p=>Math.round((p.avgViews||0)/1000);
 const feedScore=p=>Math.round((p.engagement||0)*30);
 const FOI=p=>Math.min(100,Math.round(sellScore(p)*0.4+feedScore(p)*0.6));
 const roiScore=p=>Math.round(p.foi*0.7);
+
+function updateDBButtons(){
+
+document
+.querySelectorAll(".db-btn")
+.forEach(btn=>btn.classList.remove("active"));
+
+const active =
+document.getElementById(
+"db_"+ACTIVE_DB_KEY
+);
+
+if(active)
+active.classList.add("active");
+
+document.getElementById(
+"currentDBLabel"
+).innerText =
+DATABASES[ACTIVE_DB_KEY].name;
+}
+
+async function switchDB(key){
+
+ACTIVE_DB_KEY = key;
+
+localStorage.setItem(
+"ACTIVE_DB_KEY",
+key
+);
+
+DB_ROOT =
+DATABASES[key].url;
+
+SELECTED = new Set(
+ JSON.parse(
+  localStorage.getItem(getSelectKey())
+  || "[]"
+ )
+);
+
+DATA = [];
+FILTERED_DATA = [];
+
+tb.innerHTML =
+"<tr><td colspan='6'>Loading...</td></tr>";
+
+updateDBButtons();
+
+await loadCategories();
+
+await load();
+}
 
 /* ================= LOAD ================= */
 async function load(){
@@ -380,7 +478,12 @@ function dashboard(){
   total.innerText=DATA.length;
   easy.innerText=DATA.filter(p=>p.foi>=75).length;
   roiHigh.innerText=DATA.filter(p=>p.roi>=70).length;
-  const c={};DATA.forEach(p=>c[p.category]=(c[p.category]||0)+1);
+  const c={};
+
+DATA.forEach(p=>{
+  const cat = p.category || "อื่นๆ";
+  c[cat] = (c[cat] || 0) + 1;
+});
   topCat.innerText=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||"-";
 }
 function filterCat(){
@@ -399,24 +502,6 @@ function apply(){
   FILTERED_DATA=DATA.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!c||p.category===c));
   CURRENT_PAGE=1;
   renderPage();
-}
-
-/* ================= PRODUCT LINK HELPERS ================= */
-// STEP 2 — helper สร้าง Product Link (ใช้ตอน render)
-function buildProductLink(p){
-  if(!p) return "";
-
-  // กรณีมี product_id ตรง
-  if(p.name){
-    return `https://shop.tiktok.com/view/product/${p.product_id}?region=TH&locale=th-TH&source=agency`;
-  }
-
-  // fallback: ถ้ามี product_url เต็มอยู่แล้ว
-  if(p.product_url && p.product_url.startsWith("http")){
-    return p.product_url;
-  }
-
-  return "";
 }
 
 /* ================= RENDER ================= */
@@ -534,8 +619,15 @@ function clearSelected(){
   buildGPT();                // refresh GPT text
 }
 
-function cleanForGPT(text){
-  return (text || "").replace(/ร้านค้าของคุณ/g, "").trim();
+async function sendToGPT(){
+  try{
+    await navigator.clipboard.writeText(
+      gptPrompt.value
+    );
+    alert("คัดลอกข้อความแล้ว");
+  }catch(e){
+    alert("ไม่สามารถคัดลอกได้");
+  }
 }
 
 /* ================= GPT ================= */
@@ -596,6 +688,15 @@ async function init(){
 }
 
 init();
+
+window.addEventListener(
+"load",
+()=>{
+
+updateDBButtons();
+
+}
+);
 </script>
 
 </body>
