@@ -96,29 +96,6 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 .product-btn:hover{
   background:#cffafe;
 }
-/* STORE MENU */
-
-.store-tabs{
-  display:flex;
-  gap:12px;
-  flex-wrap:wrap;
-}
-
-.store-btn{
-  background:#e2e8f0;
-  color:#0f172a;
-  border:none;
-  padding:12px 24px;
-  font-size:15px;
-  font-weight:700;
-  border-radius:12px;
-  cursor:pointer;
-}
-
-.store-btn.active{
-  background:#020617;
-  color:white;
-}
 
 </style>
 </head>
@@ -155,36 +132,14 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
 <br>
 
-<!-- STORE MENU -->
+<!-- CATEGORY -->
 <div class="card">
-
-  <h3>🏪 เลือกร้านค้า</h3>
-
-  <div class="store-tabs">
-
-    <button
-      id="tab-CozyNest"
-      class="store-btn active"
-      onclick="switchStore('CozyNest')">
-      CozyNest
-    </button>
-
-    <button
-      id="tab-BedStyle"
-      class="store-btn"
-      onclick="switchStore('BedStyle')">
-      BedStyle
-    </button>
-
-    <button
-      id="tab-TikBed"
-      class="store-btn"
-      onclick="switchStore('TikBed')">
-      TikBed
-    </button>
-
-  </div>
-
+  <h3>🗂 จัดการหมวดหมู่</h3>
+  <input id="catName" placeholder="ชื่อหมวด">
+  <input id="catRegex" placeholder="Keyword / Regex">
+  <button onclick="addCategory()">➕ เพิ่มหมวด</button>
+  <hr>
+  <div id="catList" class="cat-scroll"></div>
 </div>
 
 <br>
@@ -236,24 +191,7 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 
 <script>
 /* ================= CONFIG ================= */
-const STORES = {
-
-  CozyNest:
-  "https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app",
-
-  BedStyle:
-  "https://bedstylemarket-default-rtdb.asia-southeast1.firebasedatabase.app",
-
-  TikBed:
-  "https://tikbedmarket-default-rtdb.asia-southeast1.firebasedatabase.app"
-
-};
-
-let ACTIVE_STORE =
-localStorage.getItem("ACTIVE_STORE")
-|| "CozyNest";
-
-let DB_ROOT = STORES[ACTIVE_STORE];
+const DB_ROOT="https://index-pro-tiktok-default-rtdb.asia-southeast1.firebasedatabase.app";
 const IMPORT_PATH="/imports.json";
 
 /* ================= PRODUCT LINK ================= */
@@ -292,30 +230,12 @@ let CATEGORIES = [];
 let DATA=[];
 
 async function loadCategories(){
-
-  try{
-
-    const r = await fetch(DB_ROOT + CAT_PATH);
-
-    const j = await r.json();
-
-    CATEGORIES = j
-      ? Object.entries(j).map(([id,c]) => ({
-          id,
-          ...c
-        }))
-      : [];
-
-  }catch(e){
-
-    console.error(e);
-
-    CATEGORIES = [];
-
-  }
-
+  const r = await fetch(DB_ROOT + CAT_PATH);
+  const j = await r.json();
+  CATEGORIES = j
+  ? Object.entries(j).map(([id, c]) => ({ id, ...c }))
+  : [];
   renderCatManager();
-
 }
 
 async function addCategory(){
@@ -400,182 +320,43 @@ async function saveProductsCategory(){
   }
 }
 
-function normalizeProduct(p){
-
-  const rawId =
-    p.product_id ||
-    p.productId ||
-    p.id ||
-    p.pid ||
-    p.productID ||
-    "";
-
-  const pid = rawId
-    ? rawId.toString().replace(/[^\d]/g,"")
-    : "";
-
-  p.product_id = pid;
-
-  p.name =
-    p.name ||
-    p.title ||
-    p.product_name ||
-    "-";
-
-  p.price = Number(p.price || 0) / 100;
-
-  p.stock = p.stock || p.inventory || 0;
-
-  p.shop = p.shop || "-";
-
-  p.sell = sellScore(p);
-
-  p.feed = feedScore(p);
-
-  p.foi = FOI(p);
-
-  p.roi = roiScore(p);
-
-}
-
 /* ================= SCORE ================= */
 const sellScore=p=>Math.round((p.avgViews||0)/1000);
 const feedScore=p=>Math.round((p.engagement||0)*30);
 const FOI=p=>Math.min(100,Math.round(sellScore(p)*0.4+feedScore(p)*0.6));
 const roiScore=p=>Math.round(p.foi*0.7);
 
-async function switchStore(store){
-
-  ACTIVE_STORE = store;
-
-  localStorage.setItem(
-    "ACTIVE_STORE",
-    store
-  );
-
-  DB_ROOT = STORES[store];
-
-  document
-    .querySelectorAll(".store-btn")
-    .forEach(btn=>{
-      btn.classList.remove("active");
-    });
-
-  document
-    .getElementById("tab-"+store)
-    .classList.add("active");
-
-  await loadCategories();
-
-  await load();
-
-}
-
 /* ================= LOAD ================= */
 async function load(){
-
-  try{
-
-    console.log("ACTIVE STORE =", ACTIVE_STORE);
-    console.log("DB_ROOT =", DB_ROOT);
-
-    const url = DB_ROOT + IMPORT_PATH;
-
-    console.log("FETCH =", url);
-
-    const r = await fetch(url);
-
-    console.log("STATUS =", r.status);
-
-    const j = await r.json();
-
-    console.log("IMPORT DATA =", j);
-
-    DATA = [];
-
-    if(!j){
-
-      console.warn("IMPORT EMPTY");
-
-      reload();
-
-      return;
-    }
-
-    // CASE 1
-if(Array.isArray(j.items)){
-
-  j.items.forEach(p=>{
-
-    normalizeProduct(p);
-
-    DATA.push(p);
-
-  });
-
-}else{
-
-  // CASE 2
+  const r=await fetch(DB_ROOT+IMPORT_PATH);
+  const j=await r.json();
+  if(!j)return;
+  DATA=[];
+  
   Object.values(j).forEach(b=>{
+    (b.items||[]).forEach(p=>{
 
-    (b.items || []).forEach(p=>{
+  // normalize field
+  // Name (ข้อความ) + Product ID (ตัวเลขล้วน)
+  const rawId = (p.product_id || p.productId || p.id || p.pid || p.productID || "");
+  const pid = rawId ? rawId.toString().replace(/[^\d]/g,"") : "";
+  p.product_id = pid;
 
-      normalizeProduct(p);
+  p.name  = p.name || p.title || p.product_name || "-";
+  p.price = Number(p.price || 0) / 100;
+  p.stock = p.stock || p.inventory || 0;
 
-      DATA.push(p);
+  p.shop  = p.shop || "-";
+  p.sell  = sellScore(p);
+  p.feed  = feedScore(p);
+  p.foi   = FOI(p);
+  p.roi   = roiScore(p);
 
-    });
-
+  DATA.push(p);
+});
   });
-
-}
-
-        console.log("PRODUCT =", p);
-
-        const rawId =
-          p.product_id ||
-          p.productId ||
-          p.id ||
-          p.pid ||
-          p.productID ||
-          "";
-
-        const pid = rawId
-          ? rawId.toString().replace(/[^\d]/g,"")
-          : "";
-
-        p.product_id = pid;
-
-        p.name =
-          p.name ||
-          p.title ||
-          p.product_name ||
-          "-";
-
-        p.price = Number(p.price || 0) / 100;
-
-        DATA.push(p);
-
-      });
-
-    });
-
-    console.log("TOTAL =", DATA.length);
-
-    reassignCategories();
-
-    reload();
-
-  }catch(err){
-
-    console.error("LOAD ERROR =", err);
-
-    DATA = [];
-
-    reload();
-
-  }
-
+  reassignCategories(); // ✅ เพิ่มบรรทัดนี้
+  reload();
 }
 
 /* ================= UI ================= */
@@ -618,6 +399,24 @@ function apply(){
   FILTERED_DATA=DATA.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!c||p.category===c));
   CURRENT_PAGE=1;
   renderPage();
+}
+
+/* ================= PRODUCT LINK HELPERS ================= */
+// STEP 2 — helper สร้าง Product Link (ใช้ตอน render)
+function buildProductLink(p){
+  if(!p) return "";
+
+  // กรณีมี product_id ตรง
+  if(p.name){
+    return `https://shop.tiktok.com/view/product/${p.product_id}?region=TH&locale=th-TH&source=agency`;
+  }
+
+  // fallback: ถ้ามี product_url เต็มอยู่แล้ว
+  if(p.product_url && p.product_url.startsWith("http")){
+    return p.product_url;
+  }
+
+  return "";
 }
 
 /* ================= RENDER ================= */
@@ -792,19 +591,8 @@ async function clearData(){
 
 /* ================= INIT ================= */
 async function init(){
-
-  const activeBtn =
-  document.getElementById(
-    "tab-"+ACTIVE_STORE
-  );
-
-  if(activeBtn){
-    activeBtn.classList.add("active");
-  }
-
-  await loadCategories();
-
-  await load();
+  await loadCategories(); // โหลดหมวดก่อน
+  await load();           // แล้วค่อยโหลดสินค้า
 }
 
 init();
