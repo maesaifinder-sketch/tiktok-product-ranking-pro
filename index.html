@@ -467,9 +467,33 @@ await load();
 
 /* ================= LOAD ================= */
 async function load(){
-  const r=await fetch(DB_ROOT+IMPORT_PATH);
-  const j=await r.json();
-  if(!j)return;
+
+  try{
+
+    const r = await fetch(DB_ROOT+IMPORT_PATH);
+    const j = await r.json();
+
+    if(!j){
+      DATA=[];
+      reload();
+      return;
+    }
+
+    DATA=[];
+
+    Object.values(j).forEach(b=>{
+      ...
+    });
+
+  }catch(err){
+
+    console.error(err);
+
+    DATA=[];
+    reload();
+
+  }
+}
   DATA=[];
   
   Object.values(j).forEach(b=>{
@@ -587,23 +611,22 @@ function render(list){
   </td>
 
   <!-- Name -->
-  <td>
+ <td>
   <b>${p.name}</b>
   <br>
   <button
     class="copy-btn"
-    onclick="copyText(this, '${(p.name||'').replace(/'/g,'\\\'')}')">
+    onclick='copyText(this, ${JSON.stringify(p.name || "")})'>
     Copy
   </button>
 </td>
 
-  <!-- ID -->
-  <td>
+<td>
   <code>${p.product_id || "-"}</code>
   <br>
   <button
     class="copy-btn"
-    onclick="copyText(this, '${p.product_id || ""}')">
+    onclick='copyText(this, ${JSON.stringify(p.product_id || "")})'>
     Copy
   </button>
 </td>
@@ -633,7 +656,6 @@ function copyText(btn,text){
 
   btn.innerText = "✓ คัดลอกแล้ว";
   btn.classList.add("copied");
-
 }
 
 /* ================= PAGINATION UI ================= */
