@@ -467,33 +467,9 @@ await load();
 
 /* ================= LOAD ================= */
 async function load(){
-
-  try{
-
-    const r = await fetch(DB_ROOT+IMPORT_PATH);
-    const j = await r.json();
-
-    if(!j){
-      DATA=[];
-      reload();
-      return;
-    }
-
-    DATA=[];
-
-    Object.values(j).forEach(b=>{
-      ...
-    });
-
-  }catch(err){
-
-    console.error(err);
-
-    DATA=[];
-    reload();
-
-  }
-}
+  const r=await fetch(DB_ROOT+IMPORT_PATH);
+  const j=await r.json();
+  if(!j)return;
   DATA=[];
   
   Object.values(j).forEach(b=>{
