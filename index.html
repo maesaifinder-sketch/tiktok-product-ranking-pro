@@ -68,6 +68,22 @@ color:white;
 background:#020617;
 }
 
+.copy-btn{
+  padding:4px 8px;
+  font-size:11px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  background:#e2e8f0;
+  color:#0f172a;
+  margin-top:4px;
+}
+
+.copy-btn.copied{
+  background:#16a34a;
+  color:white;
+}
+
 /* ===== Kalodata Pagination ===== */
 .pagination{
   display:flex;
@@ -570,13 +586,25 @@ function render(list){
 
   <!-- Name -->
   <td>
-    <b>${p.name}</b>
-  </td>
+  <b>${p.name}</b>
+  <br>
+  <button
+    class="copy-btn"
+    onclick="copyText(this, '${(p.name||'').replace(/'/g,'\\\'')}')">
+    Copy
+  </button>
+</td>
 
   <!-- ID -->
   <td>
-    <code>${p.product_id || "-"}</code>
-  </td>
+  <code>${p.product_id || "-"}</code>
+  <br>
+  <button
+    class="copy-btn"
+    onclick="copyText(this, '${p.product_id || ""}')">
+    Copy
+  </button>
+</td>
 
   <!-- Product Link -->
   <td>
@@ -595,6 +623,15 @@ function toggleSelect(key){
   else SELECTED.add(key);
   saveSelected();
   buildGPT();
+}
+
+function copyText(btn,text){
+
+  navigator.clipboard.writeText(text);
+
+  btn.innerText = "✓ คัดลอกแล้ว";
+  btn.classList.add("copied");
+
 }
 
 /* ================= PAGINATION UI ================= */
