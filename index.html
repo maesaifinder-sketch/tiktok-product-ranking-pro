@@ -481,7 +481,9 @@ async function load(){
   const pid = rawId ? rawId.toString().replace(/[^\d]/g,"") : "";
   p.product_id = pid;
 
-  p.name  = p.name || p.title || p.product_name || "-";
+  p.name = (p.name || p.title || p.product_name || "-")
+  .replace(/\s*ร้านค้าของคุณ\s*/g, "")
+  .trim();
   p.price = Number(p.price || 0) / 100;
   p.stock = p.stock || p.inventory || 0;
 
