@@ -42,6 +42,12 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   transition:.15s;
 }
 
+.downloaded{
+  background:#0f172a !important;
+  color:white !important;
+  border:1px solid #0f172a !important;
+}
+
 .thumb:hover{
   transform:scale(2);
   z-index:10;
@@ -577,9 +583,11 @@ function render(list){
         <img class="thumb" src="${img}">
         <div style="margin-top:6px">
           ${hasReal ? `
-            <a href="${hi}" target="_blank" class="product-btn" style="font-size:11px;padding:3px 8px">
-              Open
-            </a>
+            <button
+  class="product-btn download-btn"
+  onclick="downloadImage('${hi}', this)">
+  Download
+</button>
           ` : `<span style=\"color:#64748b;font-size:11px\">-</span>`}
         </div>
       `;
@@ -632,6 +640,38 @@ function copyText(btn,text){
 
   btn.innerText = "✓ คัดลอกแล้ว";
   btn.classList.add("copied");
+}
+
+async function downloadImage(url, btn){
+
+  try{
+
+    const response = await fetch(url);
+    const blob = await response.blob();
+
+    const objectUrl = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = "product-image.jpg";
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(objectUrl);
+
+    // เปลี่ยนสถานะปุ่ม
+    btn.innerText = "✓ Downloaded";
+    btn.classList.add("downloaded");
+
+  }catch(err){
+
+    console.error(err);
+    alert("ดาวน์โหลดไม่สำเร็จ");
+
+  }
+
 }
 
 /* ================= PAGINATION UI ================= */
