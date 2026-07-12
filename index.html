@@ -265,7 +265,7 @@ onclick="switchDB('snack')">
     <select id="pageSize" onchange="changePageSize()">
       <option>20</option>
       <option>50</option>
-      <option>100</option>
+      <option selected>100</option>
     </select>
     รายการ / หน้า
   </div>
@@ -341,7 +341,7 @@ function getHiResImage(url){
 
 /* ================= PAGINATION STATE ================= */
 let CURRENT_PAGE=1;
-let PAGE_SIZE=20;
+let PAGE_SIZE=100;
 let FILTERED_DATA=[];
 
 /* ================= SELECT STATE ================= */
